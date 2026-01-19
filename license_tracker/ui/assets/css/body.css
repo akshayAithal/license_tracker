@@ -1,0 +1,131 @@
+html {
+    position: relative;
+    min-height: 100%;
+}
+
+.logo {
+    background-image: url("../images/application.png");
+    background-repeat: no-repeat;
+    background-position: top 5px left 53px;
+    background-attachment: fixed;
+    width: 230px;
+    height: 50px;
+    margin-top: 5px;
+    /* margin-left: 5px;
+    margin-right: 5px; */
+    margin-bottom: 1px;
+    float: left;
+}
+
+.logo_text {
+    margin-top: 18px;
+    margin-left: -190px;
+    margin-bottom: -12px;
+    padding-top: 13px;
+    color: white;
+    font-weight: bold;
+    float: left;
+    font-size: 18px;
+}
+
+.divider-vertical {
+    height: 15px;
+    margin: 0 9px;
+    border: 1px solid #FFCC33;
+}
+
+.ant-back-top-content {
+    background-color: #1088e9 !important;
+}
+
+.search-words-highlight {
+    background-color: lightgreen;
+}
+
+.ant-menu-item-group-title {
+    background-color: e6f7ff;
+    border-right: 3px solid #1890ff;
+    font-weight: bold;
+}
+
+.ant-pagination-item-link {
+    padding-top: 10px;
+}
+
+.dont-break-out {
+    /* These are technically the same, but use both */
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    -ms-word-break: break-all;
+    /* This is the dangerous one in WebKit, as it breaks things wherever */
+    word-break: break-all;
+    /* Instead use this non-standard one: */
+    word-break: break-word;
+    /* Adds a hyphen where the word breaks, if supported (No Blink) */
+    -ms-hyphens: auto;
+    -moz-hyphens: auto;
+    -webkit-hyphens: auto;
+    hyphens: auto;
+}
+
+.ellipses {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.margin-top-60 {
+    margin-top: 60px;
+}
+
+.margin-top-90 {
+    margin-top: 90px;
+}
+
+.float-left-menu {
+    float: left;
+    margin-top: 18px !important;
+    white-space: normal !important;
+    width: 7%;
+    line-height: 20px;
+}
+
+.float-right-menu {
+    float: right;
+    margin-top: 18px !important;
+    white-space: normal !important;
+    width: 7%;
+    line-height: 20px;
+}
+
+.container-page {
+    background: #fff;
+    padding: 24;
+    overflow-y: auto;
+    min-height: 63vh;
+}
+
+.spinner {
+    position: fixed !important;
+    top: 10em;
+    margin-left: 10px !important;
+    margin-top: 10px !important;
+    height: 50px;
+    left: 1em;
+    z-index: 200;
+}
+
+.ant-input-affix-wrapper .ant-input {
+    min-height: 0px !important;
+}
+
+
+/* override other styles to make responsive */
+
+
+/* video {
+
+    width: 100%    !important;
+    height: 240px   !important;
+    padding-top: 20px;
+  } */
