@@ -1,0 +1,80 @@
+version: '3.8'
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: license_tracker_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-license_tracker}
+      MYSQL_USER: ${MYSQL_USER:-license_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-license_password}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init-db:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-rootpassword}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend-network
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      args:
+        HTTP_PROXY: ${HTTP_PROXY:-}
+        HTTPS_PROXY: ${HTTPS_PROXY:-}
+    container_name: license_tracker_backend
+    restart: always
+    ports:
+      - "2324:2324"
+    environment:
+      - CFG_LOCATION=/opt/license_tracker/instance/config.py
+      - SQLALCHEMY_DATABASE_URI=mysql+pymysql://${MYSQL_USER:-license_user}:${MYSQL_PASSWORD:-license_password}@db:3306/${MYSQL_DATABASE:-license_tracker}
+      - SECRET_KEY=${SECRET_KEY:-change-me-in-production}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://frontend:3000}
+      - FLASK_ENV=${FLASK_ENV:-production}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./instance:/opt/license_tracker/instance
+    networks:
+      - backend-network
+      - frontend-network
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        HTTP_PROXY: ${HTTP_PROXY:-}
+        HTTPS_PROXY: ${HTTPS_PROXY:-}
+    container_name: license_tracker_frontend
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - BACKEND_URL=${BACKEND_URL:-http://backend:2324}
+      - NODE_ENV=${NODE_ENV:-production}
+    depends_on:
+      - backend
+    networks:
+      - frontend-network
+
+networks:
+  backend-network:
+    driver: bridge
+    internal: true
+  frontend-network:
+    driver: bridge
+
+volumes:
+  mysql_data:

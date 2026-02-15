@@ -7,8 +7,9 @@
 import os
 import warnings
 
-from flask import Flask
+from flask import Flask, jsonify
 from flask_migrate import Migrate
+from flask_cors import CORS
 
 from license_tracker.models import db
 from license_tracker.logger import install_logger, logger
@@ -87,7 +88,38 @@ def create_app(config_filename=None, config=None):
     # scheduler.start()
     
     #from feedback_collector.api import process_blueprint
+    # Configure CORS
+    cors_origins = os.environ.get('CORS_ORIGINS', 'http://localhost:3000').split(',')
+    CORS(app, resources={
+        r"/api/*": {
+            "origins": cors_origins,
+            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+            "allow_headers": ["Content-Type", "Authorization", "X-Requested-With"],
+            "supports_credentials": True,
+            "max_age": 600
+        },
+        r"/license/*": {
+            "origins": cors_origins,
+            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+            "allow_headers": ["Content-Type", "Authorization", "X-Requested-With"],
+            "supports_credentials": True,
+            "max_age": 600
+        }
+    })
+    
+    # API health check endpoint
+    @app.route('/api/health')
+    def api_health():
+        return jsonify({
+            'status': 'healthy',
+            'service': 'backend',
+            'database': 'connected' if db.engine else 'disconnected'
+        })
+    
+    #from feedback_collector.api import process_blueprint
     from license_tracker.api import license_blueprint,home_blueprint
+    from license_tracker.api.admin import admin_blueprint
     app.register_blueprint(home_blueprint)
     app.register_blueprint(license_blueprint,url_prefix="/license")
+    app.register_blueprint(admin_blueprint,url_prefix="/api/admin")
     return app

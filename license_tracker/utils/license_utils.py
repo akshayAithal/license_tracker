@@ -922,7 +922,16 @@ def get_redmine_sitecode():
     from flask import current_app
     from sqlalchemy import and_
 
-    redmine_session = get_redmine_session()
+    # Check if Redmine DB is configured, return empty dict if not
+    if not current_app.config.get("DB_TYPE") or not current_app.config.get("SERVER_IP"):
+        logger.debug("Redmine DB not configured, returning empty site code dict")
+        return {}
+
+    try:
+        redmine_session = get_redmine_session()
+    except Exception as e:
+        logger.warning("Failed to connect to Redmine DB: %s", str(e))
+        return {}
     site_code_fld  = redmine_session.query(CustomField).filter(CustomField.name==current_app.config["SITECODE"]).first()
 
     

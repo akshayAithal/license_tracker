@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Button, Col, Row, Tabs, Layout, Menu, notification, Input, Select, Spin, Radio } from 'antd';
 import { Table, Anchor, Checkbox } from 'antd';
-import { UserOutlined, LogoutOutlined, LoginOutlined } from '@ant-design/icons';
+import { UserOutlined, LogoutOutlined, LoginOutlined, SettingOutlined, UserAddOutlined } from '@ant-design/icons';
 const { Header, Content } = Layout;
 const { TabPane } = Tabs;
 const { TextArea } = Input;
@@ -12,9 +12,12 @@ const { Option } = Select;
 const { Search } = Input;
 import ChartItem from './chart';
 import { LoginPage } from './loginpage';
+// import { RegisterPage } from './registerpage';
+// import { AdminPanel } from './adminpanel';
 import License_Table from './license_table'
 import { LoginGraph } from './license_graph';
-
+import { HistoricalUsage } from './historical_usage';
+import { HistoricalUtilization } from './historical_utilization';
 
 const { Link } = Anchor;
 
@@ -52,9 +55,11 @@ export class Body extends React.Component {
       features:[],
       currentPage: "",
       isLoggedIn: false,
+      isAdmin: false,
       user: "",
       mail_id: "",
       radio_val: 1,
+      registrationEnabled: true,
     };
     
     //this.formRef = React.createRef();
@@ -75,6 +80,7 @@ export class Body extends React.Component {
         .then(res => {
           this.setState({
             isLoggedIn: false,
+            isAdmin: false,
             user: "",
             mail_id: "",
             currentPage: 1,
@@ -238,9 +244,11 @@ export class Body extends React.Component {
         remember_me: values["remember"],
       }).then(res => {
         const username = res.data.username
+        const isAdmin = res.data.is_admin || false
         this.setState({
           user: username,
           isLoggedIn: true,
+          isAdmin: isAdmin,
           currentPage: 1,
           loading: false
         })
@@ -254,13 +262,21 @@ export class Body extends React.Component {
         notification["error"]({
           message: "Error!",
           duration: 5,
-          description: `Unable to login`
+          description: (error.response && error.response.data && error.response.data.error) || 'Unable to login'
         });
       }
       ).finally(() => {
         this.setState({ loading: false })
       })
 
+    };
+
+    const onRegisterSuccess = () => {
+      this.setState({ currentPage: '2' });
+    };
+
+    const onBackToLogin = () => {
+      this.setState({ currentPage: '2' });
     };
 
     const onRadioChange = e => {
@@ -308,26 +324,75 @@ export class Body extends React.Component {
       </Menu.Item>
     )
 
+    const menuHistoricalUsage = (
+      <Menu.Item
+        key='7'
+        id="historicalUsage"
+        style={{
+          opacity: "1",
+          height: "100%",
+          order: "3",
+          position: "static"
+        }}>
+        Historical Usage
+      </Menu.Item>
+    )
+
+    const menuHistoricalUtilization = (
+      <Menu.Item
+        key='8'
+        id="historicalUtilization"
+        style={{
+          opacity: "1",
+          height: "100%",
+          order: "4",
+          position: "static"
+        }}>
+        Utilization
+      </Menu.Item>
+    )
+
+    const menuAdminPanel = (
+      <Menu.Item
+        key='5'
+        id="adminPanel"
+        style={{ height: "100%" }}>
+        <SettingOutlined />
+        Admin
+      </Menu.Item>
+    )
+
+    const menuRegister = (
+      <Menu.Item
+        key='6'
+        id="registerPage"
+        style={{ height: "100%" }}>
+        <UserAddOutlined />
+        Register
+      </Menu.Item>
+    )
 
     const menu = (
       <Menu
-        theme='dark'
+        theme='light'
         mode='horizontal'
         defaultSelectedKeys={['0']}
         //selectedKeys={[this.state.currentPage]} 
-        style={{ height: '100%', background: '#202c44' }}
+        style={{ height: '100%', background: 'linear-gradient(90deg, #0d9488 0%, #0891b2 100%)' }}
         onSelect={(i) => this.onMenuSelect(i)}>
         <Menu.Item key='1' id="treeButton" style={{ fontSize: 20, float: "left", color: "white", fontWeight: "bold" }}>
           {"License Tracker"}
         </Menu.Item>
 
+        {menuHistoricalUsage}
+        {menuHistoricalUtilization}
+        {this.state.isLoggedIn && this.state.isAdmin ? menuAdminPanel : null}
         {this.state.isLoggedIn ? menuUserName : null}
         {this.state.isLoggedIn ? menuLoggedIn : menuLoggedOut}
-        {/* {menuLicenseGraph} */}
-        {null}
+        {!this.state.isLoggedIn && this.state.registrationEnabled ? menuRegister : null}
       </Menu>);
     const header = (
-      <Header className="header" style={{ position: 'fixed', zIndex: 1, width: '100%', height: 80, background: '#202c44' }}>
+      <Header className="header" style={{ position: 'fixed', zIndex: 1, width: '100%', height: 80, background: 'linear-gradient(90deg, #0d9488 0%, #0891b2 100%)' }}>
         <div className="logo" /><span className="logo_text"></span>
         {/* How do I set up the logo in the right way?I'm using a hack right now. */}
         {menu}
@@ -454,6 +519,23 @@ export class Body extends React.Component {
         <LoginGraph />
       </div>
     }
+    else if (this.state.currentPage == '7') {
+      displayedPage = <div> {this.state.loading ? <Spin tip="Loading..." style={{ position: "absolute", left: "0px", top: "45%", width: "100%", height: "100%", zIndex: "100" }} /> : null}
+        <HistoricalUsage />
+      </div>
+    }
+    else if (this.state.currentPage == '8') {
+      displayedPage = <div> {this.state.loading ? <Spin tip="Loading..." style={{ position: "absolute", left: "0px", top: "45%", width: "100%", height: "100%", zIndex: "100" }} /> : null}
+        <HistoricalUtilization />
+      </div>
+    }
+    // Admin panel and register page temporarily disabled
+    // else if (this.state.currentPage == '5') {
+    //   displayedPage = <AdminPanel />
+    // }
+    // else if (this.state.currentPage == '6') {
+    //   displayedPage = <RegisterPage onRegisterSuccess={onRegisterSuccess} onBackToLogin={onBackToLogin} />
+    // }
     else {
       displayedPage = license_tracker_overview_page;
     }

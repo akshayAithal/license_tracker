@@ -2,14 +2,12 @@ import os
 
 SQLALCHEMY_TRACK_MODIFICATIONS = False
 SQLALCHEMY_ECHO = False
-database_path = ""
-db_path = os.getenv("DB_PATH", default = None)
-if db_path:
-    database_path = os.path.join(db_path,"license_tracker.db")
-else:
-    database_path = os.path.join(os.getcwd(),"instance","license_tracker.db")
-database_path = database_path.replace('\\','\\\\')
-SQLALCHEMY_DATABASE_URI = os.getenv("SQLALCHEMY_DATABASE_URI", default=f"sqlite:///{database_path}")
+
+# MySQL database connection via Docker (default)
+SQLALCHEMY_DATABASE_URI = os.getenv(
+    "SQLALCHEMY_DATABASE_URI",
+    "mysql+pymysql://license_user:license_password@db:3306/license_tracker"
+)
 
 SQLALCHEMY_BINDS = {}
 

@@ -23,6 +23,7 @@ docutils
 et-xmlfile
 flake8
 Flask
+Flask-Cors
 Flask-APScheduler
 Flask-Bcrypt
 Flask-JWT-Extended

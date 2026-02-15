@@ -12,17 +12,50 @@ A Flask web application to view and manage license usage across multiple license
 
 - **Backend**: Python + Flask
 - **Frontend**: React (bundled with Webpack)
-- **Database**: SQLite by default (can be overridden via `SQLALCHEMY_DATABASE_URI`)
+- **Database**: MySQL (via Docker Compose)
 
 ## Configuration
 
 This project is configured via environment variables (no server names or secrets are stored in git).
 
 - **CFG_LOCATION**: Path to a Python config file loaded by Flask (`app.config.from_envvar`).
-- **SQLALCHEMY_DATABASE_URI**: Defaults to a local SQLite file under `instance/`.
+- **SQLALCHEMY_DATABASE_URI**: MySQL connection string (configured via Docker Compose).
 - **SECRET_KEY**: Flask secret key.
 
-See `config/staging.py` and `config/production.py` for the full list of supported variables.
+See `config/staging.py`, `config/production.py`, and `config/development.py` for the full list of supported variables.
+
+## Quick Start with Docker Compose
+
+The easiest way to run the application is with Docker Compose, which sets up both the MySQL database and the application:
+
+```bash
+# Start the services (MySQL + App)
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Stop the services
+docker-compose down
+
+# Stop and remove all data (including database)
+docker-compose down -v
+```
+
+The application will be available at `http://localhost:2324`.
+
+The MySQL database is automatically initialized with:
+- Schema tables (`local_users`, `license_details`, `license_history_logs`)
+- Dummy data for testing the UI
+
+### Database Credentials (Docker)
+
+- **Host**: `localhost:3306` (from host) or `db:3306` (from app container)
+- **Database**: `license_tracker`
+- **User**: `license_user`
+- **Password**: `license_password`
+
+## Running (Local Development)
 
 ### Local `config.py`
 
@@ -31,7 +64,7 @@ Create a local `config.py` in the repository root and point `CFG_LOCATION` to it
 Example (Windows PowerShell):
 
 ```powershell
-$env:CFG_LOCATION = "$PWD\config.py"
+$env:CFG_LOCATION = "$PWD\config\development.py"
 ```
 
 ## Running (Backend)

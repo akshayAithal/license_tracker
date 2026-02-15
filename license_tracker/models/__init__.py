@@ -2,3 +2,6 @@
 # -*- coding: utf-8 -*-
 
 from .db import db
+from .users import User
+from .user_type import UserType
+from .app_settings import AppSettings
