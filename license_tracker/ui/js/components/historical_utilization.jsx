@@ -32,6 +32,11 @@ export class HistoricalUtilization extends React.Component {
             chartLabels: [],
             chartSeries: [],
         };
+        this.selectApplication = this.selectApplication.bind(this);
+        this.selectRegion = this.selectRegion.bind(this);
+        this.selectVersion = this.selectVersion.bind(this);
+        this.onRangeChange = this.onRangeChange.bind(this);
+        this.getUtilizationData = this.getUtilizationData.bind(this);
     }
 
     componentDidMount() {
@@ -48,19 +53,19 @@ export class HistoricalUtilization extends React.Component {
             });
     }
 
-    selectApplication = (value) => {
+    selectApplication(value) {
         this.setState({ application: value });
     }
 
-    selectRegion = (value) => {
+    selectRegion(value) {
         this.setState({ region: value });
     }
 
-    selectVersion = (value) => {
+    selectVersion(value) {
         this.setState({ version: value });
     }
 
-    onRangeChange = (dates, dateStrings) => {
+    onRangeChange(dates, dateStrings) {
         if (dates) {
             this.setState({
                 fromDate: dateStrings[0],
@@ -72,9 +77,9 @@ export class HistoricalUtilization extends React.Component {
                 toDate: null,
             });
         }
-    };
+    }
 
-    getUtilizationData = () => {
+    getUtilizationData() {
         this.setState({ loading: true });
         axiosInstance.post("/license/get_utilization", {
             "from_date": this.state.fromDate,
@@ -147,7 +152,7 @@ export class HistoricalUtilization extends React.Component {
                 dataIndex: 'avg_used',
                 key: 'avg_used',
                 sorter: (a, b) => a.avg_used - b.avg_used,
-                render: (value) => value?.toFixed(1) || 0,
+                render: (value) => (value ? value.toFixed(1) : 0),
             },
             {
                 title: 'Peak Used',
@@ -162,7 +167,7 @@ export class HistoricalUtilization extends React.Component {
                 sorter: (a, b) => a.utilization_percent - b.utilization_percent,
                 render: (value) => (
                     <Progress
-                        percent={value?.toFixed(1) || 0}
+                        percent={value ? value.toFixed(1) : 0}
                         size="small"
                         strokeColor={value > 80 ? '#ff4d4f' : value > 50 ? '#faad14' : '#52c41a'}
                     />
@@ -194,7 +199,7 @@ export class HistoricalUtilization extends React.Component {
                 dataIndex: 'total_hours',
                 key: 'total_hours',
                 sorter: (a, b) => a.total_hours - b.total_hours,
-                render: (value) => value?.toFixed(1) || 0,
+                render: (value) => (value ? value.toFixed(1) : 0),
             },
             {
                 title: 'Share %',
@@ -202,7 +207,7 @@ export class HistoricalUtilization extends React.Component {
                 key: 'share_percent',
                 render: (value) => (
                     <Progress
-                        percent={value?.toFixed(1) || 0}
+                        percent={value ? value.toFixed(1) : 0}
                         size="small"
                         strokeColor="#0891b2"
                     />

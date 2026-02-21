@@ -29,6 +29,11 @@ export class HistoricalUsage extends React.Component {
             summary: {},
             versions: [],
         };
+        this.selectApplication = this.selectApplication.bind(this);
+        this.selectRegion = this.selectRegion.bind(this);
+        this.selectVersion = this.selectVersion.bind(this);
+        this.onRangeChange = this.onRangeChange.bind(this);
+        this.getHistoricalUsage = this.getHistoricalUsage.bind(this);
     }
 
     componentDidMount() {
@@ -45,19 +50,19 @@ export class HistoricalUsage extends React.Component {
             });
     }
 
-    selectApplication = (value) => {
+    selectApplication(value) {
         this.setState({ application: value });
     }
 
-    selectRegion = (value) => {
+    selectRegion(value) {
         this.setState({ region: value });
     }
 
-    selectVersion = (value) => {
+    selectVersion(value) {
         this.setState({ version: value });
     }
 
-    onRangeChange = (dates, dateStrings) => {
+    onRangeChange(dates, dateStrings) {
         if (dates) {
             this.setState({
                 fromDate: dateStrings[0],
@@ -69,9 +74,9 @@ export class HistoricalUsage extends React.Component {
                 toDate: null,
             });
         }
-    };
+    }
 
-    getHistoricalUsage = () => {
+    getHistoricalUsage() {
         this.setState({ loading: true });
         axiosInstance.post("/license/get_historical_usage", {
             "from_date": this.state.fromDate,

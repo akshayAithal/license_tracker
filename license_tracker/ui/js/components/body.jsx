@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Button, Col, Row, Tabs, Layout, Menu, notification, Input, Select, Spin, Radio } from 'antd';
 import { Table, Anchor, Checkbox } from 'antd';
-import { UserOutlined, LogoutOutlined, LoginOutlined, SettingOutlined, UserAddOutlined } from '@ant-design/icons';
-const { Header, Content } = Layout;
+import { UserOutlined, LogoutOutlined, LoginOutlined, SettingOutlined, UserAddOutlined, HomeOutlined, DashboardOutlined, BarChartOutlined, DollarOutlined, FileTextOutlined } from '@ant-design/icons';
+const { Header, Content, Sider } = Layout;
 const { TabPane } = Tabs;
 const { TextArea } = Input;
 import axios from 'axios';
@@ -18,6 +18,7 @@ import License_Table from './license_table'
 import { LoginGraph } from './license_graph';
 import { HistoricalUsage } from './historical_usage';
 import { HistoricalUtilization } from './historical_utilization';
+import { Dashboard } from './dashboard';
 
 const { Link } = Anchor;
 
@@ -531,22 +532,111 @@ export class Body extends React.Component {
     }
     // Admin panel and register page temporarily disabled
     // else if (this.state.currentPage == '5') {
-    //   displayedPage = <AdminPanel />
+    // displayedPage = <AdminPanel />
     // }
     // else if (this.state.currentPage == '6') {
-    //   displayedPage = <RegisterPage onRegisterSuccess={onRegisterSuccess} onBackToLogin={onBackToLogin} />
+    // displayedPage = <RegisterPage onRegisterSuccess={onRegisterSuccess} onBackToLogin={onBackToLogin} />
     // }
     else {
       displayedPage = license_tracker_overview_page;
     }
 
+    const sidebarStyle = {
+      background: '#ffffff',
+      boxShadow: '2px 0 8px rgba(0,0,0,0.08)',
+      height: '100vh',
+      position: 'fixed',
+      left: 0,
+      top: 0,
+      zIndex: 100,
+      width: 80,
+    };
+
+    const menuItemStyle = {
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '16px 0',
+      cursor: 'pointer',
+      color: '#6b7280',
+      transition: 'all 0.3s',
+    };
+
+    const menuItemActiveStyle = {
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '16px 0',
+      cursor: 'pointer',
+      color: '#2563eb',
+      backgroundColor: '#eff6ff',
+      borderLeft: '3px solid #2563eb',
+      transition: 'all 0.3s',
+    };
+
+    const menuIconStyle = {
+      fontSize: '22px',
+      marginBottom: '4px',
+    };
+
+    const menuLabelStyle = {
+      fontSize: '10px',
+      fontWeight: '500',
+      letterSpacing: '0.5px',
+    };
+
+    const sidebarMenu = (
+      <div style={sidebarStyle}>
+        <div style={{ padding: '16px 8px', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>
+          <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#1e3a5f', letterSpacing: '1px' }}>VIZVALYTICS</span>
+        </div>
+        <div 
+          style={this.state.currentPage === 'home' || this.state.currentPage === '1' ? menuItemActiveStyle : menuItemStyle}
+          onClick={() => this.setState({ currentPage: 'home' })}
+        >
+          <HomeOutlined style={menuIconStyle} />
+          <span style={menuLabelStyle}>HOME</span>
+        </div>
+        <div 
+          style={this.state.currentPage === 'dashboard' || this.state.currentPage === '' ? menuItemActiveStyle : menuItemStyle}
+          onClick={() => this.setState({ currentPage: 'dashboard' })}
+        >
+          <DashboardOutlined style={menuIconStyle} />
+          <span style={menuLabelStyle}>DASHBOARD</span>
+        </div>
+        <div 
+          style={this.state.currentPage === '7' ? menuItemActiveStyle : menuItemStyle}
+          onClick={() => this.setState({ currentPage: '7' })}
+        >
+          <BarChartOutlined style={menuIconStyle} />
+          <span style={menuLabelStyle}>REPORTING</span>
+        </div>
+        <div 
+          style={this.state.currentPage === '8' ? menuItemActiveStyle : menuItemStyle}
+          onClick={() => this.setState({ currentPage: '8' })}
+        >
+          <DollarOutlined style={menuIconStyle} />
+          <span style={menuLabelStyle}>COSTING</span>
+        </div>
+      </div>
+    );
+
+    if (this.state.currentPage === 'dashboard' || this.state.currentPage === '') {
+      displayedPage = <Dashboard />;
+    } else if (this.state.currentPage === 'home') {
+      displayedPage = license_tracker_overview_page;
+    }
+
     return (
-      <Layout className="layout" style={{ overflowY: "hidden" }}>
-        {header}
-        <Content style={{ paddingLeft: '0.5rem', backgroundColor: '#eaeae8' }}>
-          {displayedPage}
-        </Content>
-        <GenericFooter name="License Tracker" id="99999999" />
+      <Layout className="layout" style={{ overflowY: "hidden", minHeight: '100vh' }}>
+        {sidebarMenu}
+        <Layout style={{ marginLeft: 80, backgroundColor: '#e8ecf1' }}>
+          <Content style={{ backgroundColor: '#e8ecf1', minHeight: '100vh' }}>
+            {displayedPage}
+          </Content>
+        </Layout>
       </Layout>
     );
   }
