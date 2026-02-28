@@ -83,11 +83,15 @@ ADD . /opt/license_tracker
 
 COPY --from=node-builder /opt/license_tracker/license_tracker/ui /opt/license_tracker/license_tracker/ui
 
-#Not the right thing but still
-WORKDIR /opt/license_tracker/instance
+# Create instance directory and certs directory for SSL
+RUN mkdir -p /opt/license_tracker/instance /opt/license_tracker/certs
 WORKDIR /opt/license_tracker
 
-COPY config/production.py  /opt/license_tracker/instance/config.py
+# Copy production config to instance folder
+COPY config/production.py /opt/license_tracker/instance/config.py
+
+# NOTE: .env file should be mounted at runtime via docker-compose volumes
+# or passed via env_file directive, NOT copied into the image for security
 
 RUN chmod +x utils/almutil
 RUN chmod +x utils/lmutil
@@ -98,9 +102,15 @@ RUN chmod +x utils/rlmutil
 ENV http_proxy= 
 ENV https_proxy=  
 
+# Default environment variables (can be overridden by .env)
+ENV CFG_LOCATION=/opt/license_tracker/instance/config.py
+ENV SSL_ENABLED=false
+ENV SSL_CERT_DIR=/opt/license_tracker/certs
+ENV BACKEND_HOST=0.0.0.0
+ENV BACKEND_PORT=2324
+
 # Expose port
 EXPOSE 2324
 
 # start app
-
 CMD [ "python3", "deploy_gunicorn.py" ]

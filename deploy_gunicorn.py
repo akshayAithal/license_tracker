@@ -1,12 +1,23 @@
-import multiprocessing
-
+import os
+from pathlib import Path
+from dotenv import load_dotenv
 import gunicorn.app.base
+
+# Load .env file - check instance folder first, then project root
+instance_env = Path(__file__).parent / 'instance' / '.env'
+root_env = Path(__file__).parent / '.env'
+
+if instance_env.exists():
+    load_dotenv(instance_env)
+elif root_env.exists():
+    load_dotenv(root_env)
+
+from license_tracker.app import create_app
 
 
 def number_of_workers():
-    return 10 #(multiprocessing.cpu_count() * 2) + 1
+    return int(os.getenv("GUNICORN_WORKERS", "10"))
 
-from license_tracker.app import create_app
 
 class StandaloneApplication(gunicorn.app.base.BaseApplication):
 
@@ -25,32 +36,56 @@ class StandaloneApplication(gunicorn.app.base.BaseApplication):
         return self.application
 
 
+def is_ssl_enabled():
+    """Check if SSL is enabled via environment variable."""
+    ssl_enabled = os.getenv("SSL_ENABLED", "false").lower()
+    return ssl_enabled in ("true", "1", "yes")
+
+
+def get_ssl_paths():
+    """Get SSL certificate and key paths from environment."""
+    cert_dir = os.getenv("SSL_CERT_DIR", "/opt/license_tracker/certs")
+    cert_file = os.getenv("SSL_CERT_FILE", "server_certificate.pem")
+    key_file = os.getenv("SSL_KEY_FILE", "server_key.key")
+    
+    cert_path = os.path.join(cert_dir, cert_file)
+    key_path = os.path.join(cert_dir, key_file)
+    
+    return cert_path, key_path
+
 
 if __name__ == '__main__':
     app = create_app(config_filename="config.py")
-    import os
-    if os.getenv("SSL_CERT_DIR"):
-        cert_path = os.getenv("SSL_CERT_DIR") 
-        cert_full_path = os.path.join(cert_path,"server_certificate.pem")
-        key_full_path = os.path.join(cert_path,"server_key.key")
-    else:
-        cert_full_path ='/cert/server_certificate.pem'
-        key_full_path = '/cert/server_key.key'
-    if os.getenv("SSL_ENABLED"):
-        options = {
-        'bind': '%s:%s' % ('0.0.0.0', '2324'),
+    
+    # Get configuration from environment
+    host = os.getenv("BACKEND_HOST", "0.0.0.0")
+    port = os.getenv("BACKEND_PORT", "2324")
+    timeout = int(os.getenv("GUNICORN_TIMEOUT", "240"))
+    log_level = os.getenv("GUNICORN_LOG_LEVEL", "debug")
+    
+    # Base options
+    options = {
+        'bind': f'{host}:{port}',
         'workers': number_of_workers(),
-        'timeout': 240,
-        'log-level': 'debug',
-        'certfile':cert_full_path,
-        'keyfile':key_full_path,
-        'limit_request_line':0
+        'timeout': timeout,
+        'log-level': log_level,
     }
+    
+    # Add SSL options if enabled
+    if is_ssl_enabled():
+        cert_path, key_path = get_ssl_paths()
+        
+        # Verify certificates exist
+        if not os.path.exists(cert_path):
+            print(f"WARNING: SSL certificate not found at {cert_path}")
+        if not os.path.exists(key_path):
+            print(f"WARNING: SSL key not found at {key_path}")
+        
+        options['certfile'] = cert_path
+        options['keyfile'] = key_path
+        options['limit_request_line'] = 0
+        print(f"Starting server with HTTPS on {host}:{port}")
     else:
-        options ={
-        'bind': '%s:%s' % ('0.0.0.0', '2324'),
-        'workers': number_of_workers(),
-        'timeout': 240,
-        'log-level': 'debug',
-    }
+        print(f"Starting server with HTTP on {host}:{port}")
+    
     StandaloneApplication(app, options).run()

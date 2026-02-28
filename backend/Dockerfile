@@ -55,11 +55,14 @@ COPY deploy_gunicorn.py ./
 COPY setup.py ./
 COPY setup.cfg ./
 
-# Create instance directory
-RUN mkdir -p instance
+# Create instance directory and certs directory for SSL
+RUN mkdir -p instance certs
 
-# Copy production config
+# Copy production config to instance folder
 COPY config/production.py instance/config.py
+
+# NOTE: .env file should be mounted at runtime via docker-compose volumes
+# or passed via env_file directive, NOT copied into the image for security
 
 # Set executable permissions for utility binaries
 RUN chmod +x utils/almutil utils/lmutil utils/rlmutil
@@ -68,10 +71,17 @@ RUN chmod +x utils/almutil utils/lmutil utils/rlmutil
 ENV http_proxy=
 ENV https_proxy=
 
+# Default environment variables (can be overridden by .env)
+ENV CFG_LOCATION=/opt/license_tracker/instance/config.py
+ENV SSL_ENABLED=false
+ENV SSL_CERT_DIR=/opt/license_tracker/certs
+ENV BACKEND_HOST=0.0.0.0
+ENV BACKEND_PORT=2324
+
 # Expose API port
 EXPOSE 2324
 
-# Health check
+# Health check - uses environment variable for protocol
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:2324/api/health || exit 1
 

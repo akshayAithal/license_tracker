@@ -63,9 +63,10 @@ config.py
 config.local.py
 *.local.py
 
-# Certificates / keys
+# Certificates / keys (allow README for instructions)
 cert/
-certs/
+certs/*
+!certs/README.md
 *.pem
 *.key
 

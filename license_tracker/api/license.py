@@ -775,3 +775,193 @@ def get_utilization():
     except Exception as err:
         logger.error(f"Error getting utilization: {err}")
         return jsonify({"success": False, "utilization_data": [], "version_breakdown": [], "summary": {}})
+
+
+@license_blueprint.route("/generate_live_data", methods=["POST"])
+@login_required
+def generate_live_data():
+    """Generate random live license data for testing/demo purposes.
+    
+    Creates random check-ins and check-outs over the next hour to simulate
+    real-time license usage from lmxutil and other tools.
+    """
+    import random
+    from datetime import datetime, timedelta
+    from license_tracker.models.license_details import LicenseDetail
+    from license_tracker.models.license_history_logs import LicenseHistoryLog
+    
+    try:
+        # Get duration from request (default 60 minutes)
+        data = request.get_json() or {}
+        duration_minutes = data.get('duration_minutes', 60)
+        num_events = data.get('num_events', 50)
+        
+        # Configuration - same apps as the system
+        APPS_CONFIG = {
+            'MSC': {
+                'server': 'license-server-{region}',
+                'features': [
+                    ('MSC Nastran', 'nastran', '2024.1', 100),
+                    ('MSC Patran', 'patran', '2024.1', 50),
+                    ('MSC Marc', 'marc', '2024.1', 40),
+                ]
+            },
+            'Altair': {
+                'server': 'license-server-{region}',
+                'features': [
+                    ('Altair HyperWorks', 'hyperworks', '2024.0', 75),
+                    ('Altair HyperMesh', 'hypermesh', '2024.0', 75),
+                    ('Altair Radioss', 'radioss', '2024.0', 60),
+                ]
+            },
+            'RLM': {
+                'server': 'license-server-{region}',
+                'features': [
+                    ('MASTA', 'masta', '12.0', 25),
+                ]
+            },
+            'Particleworks': {
+                'server': 'license-server-{region}',
+                'features': [
+                    ('Particleworks', 'particleworks', '8.0', 10),
+                ]
+            }
+        }
+        
+        REGIONS = ['EU', 'APAC', 'AME']
+        REGION_SERVERS = {'EU': 'eu', 'APAC': 'apac', 'AME': 'ame'}
+        
+        USERS = [
+            ('john.doe', 'workstation-01', 'EU-LON'),
+            ('jane.smith', 'workstation-02', 'US-NYC'),
+            ('bob.wilson', 'workstation-03', 'APAC-SG'),
+            ('alice.chen', 'workstation-04', 'EU-BER'),
+            ('admin', 'server-01', 'HQ'),
+            ('mike.jones', 'workstation-10', 'US-NYC'),
+            ('sarah.lee', 'workstation-11', 'APAC-SG'),
+            ('david.kim', 'workstation-12', 'EU-LON'),
+            ('emma.white', 'workstation-13', 'US-NYC'),
+            ('chris.brown', 'workstation-14', 'EU-BER'),
+        ]
+        
+        now = datetime.now()
+        generated_details = 0
+        generated_history = 0
+        
+        # Generate events spread over the duration
+        for i in range(num_events):
+            # Random time offset within the duration (past and future)
+            minutes_offset = random.randint(-5, duration_minutes)
+            event_time = now + timedelta(minutes=minutes_offset)
+            
+            # Pick random app and feature
+            app_name = random.choice(list(APPS_CONFIG.keys()))
+            app_config = APPS_CONFIG[app_name]
+            software, feature, version, total_lic = random.choice(app_config['features'])
+            
+            # Pick random region and user
+            region = random.choice(REGIONS)
+            server = app_config['server'].format(region=REGION_SERVERS[region])
+            username, host, site_code = random.choice(USERS)
+            user_key = f"{username}@{host}"
+            
+            # Random license usage
+            lic_used = random.randint(1, 5)
+            total_used = random.randint(int(total_lic * 0.2), int(total_lic * 0.8))
+            
+            # Decide if this is a check-in or check-out (70% check-out, 30% check-in)
+            is_checkout = random.random() > 0.3
+            
+            if is_checkout:
+                # Create a license_details entry (active check-out)
+                detail = LicenseDetail(
+                    application=app_name,
+                    region=region,
+                    user=username,
+                    host=host,
+                    feature=feature,
+                    user_key=user_key,
+                    license_used=lic_used,
+                    site_code=site_code,
+                    check_out=event_time,
+                    check_in=None,
+                    spent_hours=None,
+                    total_license=total_lic,
+                    total_license_used=total_used
+                )
+                db.session.add(detail)
+                generated_details += 1
+            
+            # Always create a history log entry
+            history = LicenseHistoryLog(
+                application=app_name,
+                region=region,
+                user=username,
+                server=server,
+                host=host,
+                software=software,
+                feature=feature,
+                version=version,
+                user_key=user_key,
+                date_time=event_time,
+                license_used=lic_used,
+                site_code=site_code,
+                total_license=total_lic,
+                total_license_used=total_used
+            )
+            db.session.add(history)
+            generated_history += 1
+        
+        db.session.commit()
+        
+        logger.info(f"Generated live data: {generated_details} active licenses, {generated_history} history records")
+        
+        return jsonify({
+            "success": True,
+            "message": f"Generated {generated_details} active licenses and {generated_history} history records",
+            "details_count": generated_details,
+            "history_count": generated_history,
+            "duration_minutes": duration_minutes
+        })
+        
+    except Exception as err:
+        db.session.rollback()
+        logger.error(f"Error generating live data: {err}")
+        return jsonify({"success": False, "error": str(err)}), 500
+
+
+@license_blueprint.route("/clear_live_data", methods=["POST"])
+@login_required
+def clear_live_data():
+    """Clear generated live data (license_details and recent history)."""
+    from license_tracker.models.license_details import LicenseDetail
+    from license_tracker.models.license_history_logs import LicenseHistoryLog
+    from datetime import datetime, timedelta
+    
+    try:
+        # Clear all license_details (active licenses)
+        details_deleted = LicenseDetail.query.delete()
+        
+        # Optionally clear recent history (last hour)
+        data = request.get_json() or {}
+        clear_history = data.get('clear_history', False)
+        history_deleted = 0
+        
+        if clear_history:
+            one_hour_ago = datetime.now() - timedelta(hours=1)
+            history_deleted = LicenseHistoryLog.query.filter(
+                LicenseHistoryLog.date_time >= one_hour_ago
+            ).delete()
+        
+        db.session.commit()
+        
+        return jsonify({
+            "success": True,
+            "details_deleted": details_deleted,
+            "history_deleted": history_deleted
+        })
+        
+    except Exception as err:
+        db.session.rollback()
+        logger.error(f"Error clearing live data: {err}")
+        return jsonify({"success": False, "error": str(err)}), 500

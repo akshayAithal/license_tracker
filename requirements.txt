@@ -74,6 +74,7 @@ pytest-runner
 python-dateutil
 python-editor
 pytz
+python-dotenv
 requests
 restructuredtext-lint
 scp

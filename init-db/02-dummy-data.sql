@@ -1,4 +1,5 @@
 -- Insert dummy data for license_tracker
+-- EXPANDED VERSION: 2000 license history records (100x original)
 
 USE license_tracker;
 
@@ -10,7 +11,12 @@ INSERT INTO local_users (login, email, password_hash, type, site_code, is_active
 ('jane.smith', 'jane.smith@example.com', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/X4.G.y.0yCwRQ3Y7K', 'USER', 'US-NYC', TRUE),
 ('bob.wilson', 'bob.wilson@example.com', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/X4.G.y.0yCwRQ3Y7K', 'USER', 'APAC-SG', TRUE),
 ('alice.chen', 'alice.chen@example.com', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/X4.G.y.0yCwRQ3Y7K', 'USER', 'EU-BER', TRUE),
-('user_1', 'user_1@example.com', 'pbkdf2:sha256:260000$temp$willberesetbyapp', 'USER', 'HQ', TRUE);
+('user_1', 'user_1@example.com', 'pbkdf2:sha256:260000$temp$willberesetbyapp', 'USER', 'HQ', TRUE),
+('mike.jones', 'mike.jones@example.com', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/X4.G.y.0yCwRQ3Y7K', 'USER', 'US-NYC', TRUE),
+('sarah.lee', 'sarah.lee@example.com', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/X4.G.y.0yCwRQ3Y7K', 'USER', 'APAC-SG', TRUE),
+('david.kim', 'david.kim@example.com', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/X4.G.y.0yCwRQ3Y7K', 'USER', 'EU-LON', TRUE),
+('emma.white', 'emma.white@example.com', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/X4.G.y.0yCwRQ3Y7K', 'USER', 'US-NYC', TRUE),
+('chris.brown', 'chris.brown@example.com', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/X4.G.y.0yCwRQ3Y7K', 'USER', 'EU-BER', TRUE);
 
 -- Insert default app settings
 INSERT INTO app_settings (setting_key, setting_value, setting_type, description) VALUES
@@ -41,25 +47,102 @@ INSERT INTO license_details (application, region, user, host, feature, user_key,
 ('MSC', 'EU', 'admin', 'server-01', 'nastran', 'admin@server-01', 5, 'HQ', '2026-01-31 05:00:00', NULL, NULL, 100, 45),
 ('Particleworks', 'APAC', 'bob.wilson', 'workstation-09', 'particleworks', 'bob.wilson@workstation-09', 1, 'APAC-SG', '2026-01-31 08:30:00', NULL, NULL, 10, 6);
 
--- Insert dummy license history logs (past usage)
-INSERT INTO license_history_logs (application, region, user, server, host, software, feature, version, user_key, date_time, license_used, site_code, total_license, total_license_used) VALUES
-('MSC', 'EU', 'john.doe', 'license-server-eu', 'workstation-01', 'MSC Nastran', 'nastran', '2024.1', 'john.doe@workstation-01', '2026-01-30 08:00:00', 2, 'EU-LON', 100, 52),
-('MSC', 'EU', 'john.doe', 'license-server-eu', 'workstation-01', 'MSC Nastran', 'nastran', '2024.1', 'john.doe@workstation-01', '2026-01-29 09:00:00', 2, 'EU-LON', 100, 48),
-('MSC', 'EU', 'jane.smith', 'license-server-eu', 'workstation-02', 'MSC Patran', 'patran', '2024.1', 'jane.smith@workstation-02', '2026-01-30 10:00:00', 1, 'EU-LON', 50, 25),
-('MSC', 'APAC', 'bob.wilson', 'license-server-apac', 'workstation-03', 'MSC Nastran', 'nastran', '2024.1', 'bob.wilson@workstation-03', '2026-01-30 07:30:00', 3, 'APAC-SG', 100, 71),
-('MSC', 'APAC', 'bob.wilson', 'license-server-apac', 'workstation-03', 'MSC Nastran', 'nastran', '2024.1', 'bob.wilson@workstation-03', '2026-01-29 06:00:00', 4, 'APAC-SG', 100, 65),
-('Altair', 'EU', 'alice.chen', 'license-server-eu', 'workstation-04', 'Altair HyperWorks', 'hyperworks', '2024.0', 'alice.chen@workstation-04', '2026-01-30 11:00:00', 1, 'EU-BER', 75, 38),
-('Altair', 'AME', 'john.doe', 'license-server-ame', 'workstation-05', 'Altair HyperMesh', 'hypermesh', '2024.0', 'john.doe@workstation-05', '2026-01-30 14:30:00', 2, 'US-NYC', 75, 31),
-('Altair', 'AME', 'jane.smith', 'license-server-ame', 'workstation-06', 'Altair HyperMesh', 'hypermesh', '2024.0', 'jane.smith@workstation-06', '2026-01-29 15:00:00', 1, 'US-NYC', 75, 29),
-('MSC', 'AME', 'jane.smith', 'license-server-ame', 'workstation-06', 'MSC Marc', 'marc', '2024.1', 'jane.smith@workstation-06', '2026-01-30 13:00:00', 1, 'US-NYC', 40, 20),
-('RLM', 'EU', 'bob.wilson', 'license-server-eu', 'workstation-07', 'MASTA', 'masta', '12.0', 'bob.wilson@workstation-07', '2026-01-30 10:30:00', 1, 'EU-LON', 25, 15),
-('RLM', 'EU', 'alice.chen', 'license-server-eu', 'workstation-07', 'MASTA', 'masta', '12.0', 'alice.chen@workstation-07', '2026-01-29 09:30:00', 1, 'EU-LON', 25, 13),
-('Altair', 'APAC', 'alice.chen', 'license-server-apac', 'workstation-08', 'Altair Radioss', 'radioss', '2024.0', 'alice.chen@workstation-08', '2026-01-30 07:00:00', 2, 'APAC-SG', 60, 44),
-('Altair', 'APAC', 'bob.wilson', 'license-server-apac', 'workstation-08', 'Altair Radioss', 'radioss', '2024.0', 'bob.wilson@workstation-08', '2026-01-29 08:00:00', 3, 'APAC-SG', 60, 39),
-('MSC', 'EU', 'admin', 'license-server-eu', 'server-01', 'MSC Nastran', 'nastran', '2024.1', 'admin@server-01', '2026-01-30 05:30:00', 5, 'HQ', 100, 55),
-('Particleworks', 'APAC', 'bob.wilson', 'license-server-apac', 'workstation-09', 'Particleworks', 'particleworks', '8.0', 'bob.wilson@workstation-09', '2026-01-30 09:00:00', 1, 'APAC-SG', 10, 7),
-('MSC', 'EU', 'john.doe', 'license-server-eu', 'workstation-01', 'MSC Nastran', 'nastran', '2024.1', 'john.doe@workstation-01', '2026-01-28 08:30:00', 2, 'EU-LON', 100, 42),
-('MSC', 'EU', 'jane.smith', 'license-server-eu', 'workstation-02', 'MSC Patran', 'patran', '2024.1', 'jane.smith@workstation-02', '2026-01-28 11:00:00', 1, 'EU-LON', 50, 21),
-('Altair', 'EU', 'alice.chen', 'license-server-eu', 'workstation-04', 'Altair HyperWorks', 'hyperworks', '2024.0', 'alice.chen@workstation-04', '2026-01-28 12:00:00', 1, 'EU-BER', 75, 35),
-('MSC', 'APAC', 'bob.wilson', 'license-server-apac', 'workstation-03', 'MSC Nastran', 'nastran', '2024.1', 'bob.wilson@workstation-03', '2026-01-28 06:30:00', 3, 'APAC-SG', 100, 58),
-('Altair', 'AME', 'john.doe', 'license-server-ame', 'workstation-05', 'Altair HyperMesh', 'hypermesh', '2024.0', 'john.doe@workstation-05', '2026-01-28 15:00:00', 2, 'US-NYC', 75, 26);
+-- Insert dummy license history logs (2000 records - 100x expansion)
+-- This uses a stored procedure to generate random data spanning 365 days
+-- Apps: MSC (nastran, patran, marc), Altair (hyperworks, hypermesh, radioss), RLM (masta), Particleworks
+
+DROP PROCEDURE IF EXISTS generate_license_history;
+
+DELIMITER //
+
+CREATE PROCEDURE generate_license_history(IN num_records INT)
+BEGIN
+    DECLARE i INT DEFAULT 0;
+    DECLARE app VARCHAR(16);
+    DECLARE region VARCHAR(16);
+    DECLARE username VARCHAR(64);
+    DECLARE server VARCHAR(64);
+    DECLARE host VARCHAR(64);
+    DECLARE software VARCHAR(64);
+    DECLARE feature VARCHAR(64);
+    DECLARE version VARCHAR(64);
+    DECLARE user_key VARCHAR(64);
+    DECLARE site_code VARCHAR(16);
+    DECLARE total_lic INT;
+    DECLARE total_used INT;
+    DECLARE lic_used INT;
+    DECLARE dt DATETIME;
+    DECLARE app_idx INT;
+    DECLARE user_idx INT;
+    DECLARE feature_idx INT;
+    DECLARE days_ago INT;
+    DECLARE hours_offset INT;
+    
+    WHILE i < num_records DO
+        SET app_idx = FLOOR(1 + RAND() * 4);
+        
+        CASE app_idx
+            WHEN 1 THEN 
+                SET app = 'MSC';
+                SET feature_idx = FLOOR(1 + RAND() * 3);
+                CASE feature_idx
+                    WHEN 1 THEN SET software = 'MSC Nastran'; SET feature = 'nastran'; SET version = '2024.1'; SET total_lic = 100;
+                    WHEN 2 THEN SET software = 'MSC Patran'; SET feature = 'patran'; SET version = '2024.1'; SET total_lic = 50;
+                    ELSE SET software = 'MSC Marc'; SET feature = 'marc'; SET version = '2024.1'; SET total_lic = 40;
+                END CASE;
+            WHEN 2 THEN 
+                SET app = 'Altair';
+                SET feature_idx = FLOOR(1 + RAND() * 3);
+                CASE feature_idx
+                    WHEN 1 THEN SET software = 'Altair HyperWorks'; SET feature = 'hyperworks'; SET version = '2024.0'; SET total_lic = 75;
+                    WHEN 2 THEN SET software = 'Altair HyperMesh'; SET feature = 'hypermesh'; SET version = '2024.0'; SET total_lic = 75;
+                    ELSE SET software = 'Altair Radioss'; SET feature = 'radioss'; SET version = '2024.0'; SET total_lic = 60;
+                END CASE;
+            WHEN 3 THEN 
+                SET app = 'RLM';
+                SET software = 'MASTA'; SET feature = 'masta'; SET version = '12.0'; SET total_lic = 25;
+            ELSE 
+                SET app = 'Particleworks';
+                SET software = 'Particleworks'; SET feature = 'particleworks'; SET version = '8.0'; SET total_lic = 10;
+        END CASE;
+        
+        SET region = ELT(FLOOR(1 + RAND() * 3), 'EU', 'APAC', 'AME');
+        SET server = CONCAT('license-server-', LOWER(region));
+        
+        SET user_idx = FLOOR(1 + RAND() * 10);
+        CASE user_idx
+            WHEN 1 THEN SET username = 'john.doe'; SET host = 'workstation-01'; SET site_code = 'EU-LON';
+            WHEN 2 THEN SET username = 'jane.smith'; SET host = 'workstation-02'; SET site_code = 'US-NYC';
+            WHEN 3 THEN SET username = 'bob.wilson'; SET host = 'workstation-03'; SET site_code = 'APAC-SG';
+            WHEN 4 THEN SET username = 'alice.chen'; SET host = 'workstation-04'; SET site_code = 'EU-BER';
+            WHEN 5 THEN SET username = 'admin'; SET host = 'server-01'; SET site_code = 'HQ';
+            WHEN 6 THEN SET username = 'mike.jones'; SET host = 'workstation-10'; SET site_code = 'US-NYC';
+            WHEN 7 THEN SET username = 'sarah.lee'; SET host = 'workstation-11'; SET site_code = 'APAC-SG';
+            WHEN 8 THEN SET username = 'david.kim'; SET host = 'workstation-12'; SET site_code = 'EU-LON';
+            WHEN 9 THEN SET username = 'emma.white'; SET host = 'workstation-13'; SET site_code = 'US-NYC';
+            ELSE SET username = 'chris.brown'; SET host = 'workstation-14'; SET site_code = 'EU-BER';
+        END CASE;
+        
+        SET user_key = CONCAT(username, '@', host);
+        SET days_ago = FLOOR(RAND() * 365);
+        SET hours_offset = FLOOR(RAND() * 24);
+        SET dt = DATE_SUB(NOW(), INTERVAL days_ago DAY) - INTERVAL hours_offset HOUR;
+        SET lic_used = FLOOR(1 + RAND() * 5);
+        SET total_used = FLOOR(total_lic * 0.2 + RAND() * total_lic * 0.7);
+        
+        INSERT INTO license_history_logs 
+            (application, region, user, server, host, software, feature, version, user_key, date_time, license_used, site_code, total_license, total_license_used)
+        VALUES 
+            (app, region, username, server, host, software, feature, version, user_key, dt, lic_used, site_code, total_lic, total_used);
+        
+        SET i = i + 1;
+    END WHILE;
+END //
+
+DELIMITER ;
+
+-- Generate 2000 license history records (100x the original 20)
+CALL generate_license_history(2000);
+
+-- Cleanup procedure
+DROP PROCEDURE IF EXISTS generate_license_history;

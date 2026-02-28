@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Button, Col, Row, Tabs, Layout, Menu, notification, Input, Select, Spin, Radio } from 'antd';
 import { Table, Anchor, Checkbox } from 'antd';
-import { UserOutlined, LogoutOutlined, LoginOutlined, SettingOutlined, UserAddOutlined, HomeOutlined, DashboardOutlined, BarChartOutlined, DollarOutlined, FileTextOutlined } from '@ant-design/icons';
+import { UserOutlined, LogoutOutlined, LoginOutlined, SettingOutlined, UserAddOutlined, HomeOutlined, DashboardOutlined, BarChartOutlined, DollarOutlined, FileTextOutlined, ThunderboltOutlined, DeleteOutlined } from '@ant-design/icons';
 const { Header, Content, Sider } = Layout;
 const { TabPane } = Tabs;
 const { TextArea } = Input;
@@ -61,10 +61,13 @@ export class Body extends React.Component {
       mail_id: "",
       radio_val: 1,
       registrationEnabled: true,
+      generatingLiveData: false,
     };
     
     //this.formRef = React.createRef();
     //this.searchInput = React.createRef();
+    this.generateLiveData = this.generateLiveData.bind(this);
+    this.clearLiveData = this.clearLiveData.bind(this);
   }
 
 
@@ -173,6 +176,49 @@ export class Body extends React.Component {
       })
   }
 
+
+  generateLiveData() {
+    this.setState({ generatingLiveData: true });
+    axiosInstance.post('/license/generate_live_data', {
+      duration_minutes: 60,
+      num_events: 50
+    }).then(res => {
+      notification["success"]({
+        message: "Live Data Generated",
+        description: res.data.message || 'Generated live data successfully',
+        duration: 5
+      });
+    }).catch(error => {
+      notification["error"]({
+        message: "Error",
+        description: (error.response && error.response.data && error.response.data.error) || 'Failed to generate live data. Make sure you are logged in.',
+        duration: 5
+      });
+    }).finally(() => {
+      this.setState({ generatingLiveData: false });
+    });
+  }
+
+  clearLiveData() {
+    this.setState({ generatingLiveData: true });
+    axiosInstance.post('/license/clear_live_data', {
+      clear_history: false
+    }).then(res => {
+      notification["success"]({
+        message: "Live Data Cleared",
+        description: 'Cleared active license records',
+        duration: 5
+      });
+    }).catch(error => {
+      notification["error"]({
+        message: "Error",
+        description: (error.response && error.response.data && error.response.data.error) || 'Failed to clear live data',
+        duration: 5
+      });
+    }).finally(() => {
+      this.setState({ generatingLiveData: false });
+    });
+  }
 
   render() {
     const formPageStyle = {
@@ -453,6 +499,30 @@ export class Body extends React.Component {
           <UserOutlined />
           Submit
         </Button>
+        &nbsp;&nbsp;&nbsp;&nbsp;
+        {this.state.isLoggedIn && (
+          <Button
+            type="default"
+            size="large"
+            loading={this.state.generatingLiveData}
+            onClick={this.generateLiveData}
+            style={{ backgroundColor: '#52c41a', borderColor: '#52c41a', color: 'white' }}>
+            <ThunderboltOutlined />
+            Generate Live Data
+          </Button>
+        )}
+        &nbsp;&nbsp;
+        {this.state.isLoggedIn && (
+          <Button
+            type="default"
+            size="large"
+            loading={this.state.generatingLiveData}
+            onClick={this.clearLiveData}
+            danger>
+            <DeleteOutlined />
+            Clear Live Data
+          </Button>
+        )}
         <br />
         <br />
         <h1>License Info :</h1>
