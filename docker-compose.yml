@@ -12,23 +12,22 @@ services:
     image: mysql:8.0
     container_name: license_tracker_db
     restart: always
-    env_file:
-      - .env
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-license_tracker}
-      MYSQL_USER: ${MYSQL_USER:-license_user}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-license_password}
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: license_tracker
+      MYSQL_USER: license_user
+      MYSQL_PASSWORD: license_password
     ports:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
       - ./init-db:/docker-entrypoint-initdb.d
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-rootpassword}"]
+      test: ["CMD", "mysql", "-u", "license_user", "-plicense_password", "-e", "SELECT 1 FROM license_tracker.local_users LIMIT 1"]
       interval: 10s
-      timeout: 5s
-      retries: 5
+      timeout: 10s
+      retries: 30
+      start_period: 30s
     networks:
       - backend-network
 
@@ -36,23 +35,25 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
-      args:
-        HTTP_PROXY: ${HTTP_PROXY:-}
-        HTTPS_PROXY: ${HTTPS_PROXY:-}
     container_name: license_tracker_backend
     restart: always
     ports:
-      - "${BACKEND_PORT:-2324}:${BACKEND_PORT:-2324}"
-    env_file:
-      - .env
+      - "2324:2324"
+    environment:
+      SQLALCHEMY_DATABASE_URI: mysql+pymysql://license_user:license_password@db:3306/license_tracker
+      BACKEND_HOST: 0.0.0.0
+      BACKEND_PORT: "2324"
+      CFG_LOCATION: /opt/license_tracker/instance/config.py
+      CORS_ORIGINS: http://localhost:3000,http://frontend:3000
+      GUNICORN_WORKERS: "10"
+      GUNICORN_TIMEOUT: "240"
+      GUNICORN_LOG_LEVEL: debug
+      SSL_ENABLED: "false"
     depends_on:
       db:
         condition: service_healthy
     volumes:
       - ./instance:/opt/license_tracker/instance
-      # Mount .env file into instance folder for python-dotenv to read
-      - ./.env:/opt/license_tracker/instance/.env:ro
-      # Mount SSL certificates directory (create ./certs folder with your certs)
       - ./certs:/opt/license_tracker/certs:ro
     networks:
       - backend-network
@@ -62,19 +63,14 @@ services:
     build:
       context: .
       dockerfile: frontend/Dockerfile
-      args:
-        HTTP_PROXY: ${HTTP_PROXY:-}
-        HTTPS_PROXY: ${HTTPS_PROXY:-}
     container_name: license_tracker_frontend
     restart: always
     ports:
-      - "${FRONTEND_PORT:-3000}:${FRONTEND_PORT:-3000}"
-    env_file:
-      - .env
+      - "3000:3000"
     environment:
-      - PORT=${FRONTEND_PORT:-3000}
-      - BACKEND_URL=${BACKEND_URL:-http://backend:2324}
-      - NODE_ENV=${NODE_ENV:-production}
+      - PORT=3000
+      - BACKEND_URL=http://backend:2324
+      - NODE_ENV=production
     depends_on:
       - backend
     networks:

@@ -107,7 +107,7 @@ export const AdminPanel = (props) => {
         } catch (error) {
             notification.error({
                 message: 'Error',
-                description: error.response?.data?.error || 'Failed to delete user'
+                description: (error.response && error.response.data && error.response.data.error) || 'Failed to delete user'
             });
         }
     };
@@ -133,7 +133,7 @@ export const AdminPanel = (props) => {
         } catch (error) {
             notification.error({
                 message: 'Error',
-                description: error.response?.data?.error || 'Failed to save user'
+                description: (error.response && error.response.data && error.response.data.error) || 'Failed to save user'
             });
         } finally {
             setLoading(false);
@@ -170,7 +170,7 @@ export const AdminPanel = (props) => {
         } catch (error) {
             notification.error({
                 message: 'LDAP Test Failed',
-                description: error.response?.data?.error || 'Connection failed'
+                description: (error.response && error.response.data && error.response.data.error) || 'Connection failed'
             });
         } finally {
             setLoading(false);

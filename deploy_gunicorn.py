@@ -1,4 +1,6 @@
 import os
+import sys
+import time
 from pathlib import Path
 from dotenv import load_dotenv
 import gunicorn.app.base
@@ -11,6 +13,57 @@ if instance_env.exists():
     load_dotenv(instance_env)
 elif root_env.exists():
     load_dotenv(root_env)
+
+
+def wait_for_db(max_retries=30, retry_interval=5):
+    """Wait for the database to be fully ready before starting the app.
+    Retries connection up to max_retries times with retry_interval seconds between.
+    """
+    import pymysql
+    db_uri = os.getenv("SQLALCHEMY_DATABASE_URI", "")
+    if not db_uri:
+        print("No SQLALCHEMY_DATABASE_URI set, skipping DB wait")
+        return True
+
+    # Parse host/port/user/pass from URI
+    # Format: mysql+pymysql://user:password@host:port/database
+    try:
+        parts = db_uri.split("://")[1]
+        creds, rest = parts.split("@")
+        user, password = creds.split(":")
+        hostport, database = rest.split("/")
+        if ":" in hostport:
+            host, port = hostport.split(":")
+            port = int(port)
+        else:
+            host = hostport
+            port = 3306
+    except Exception as e:
+        print(f"Could not parse DB URI, skipping wait: {e}")
+        return True
+
+    for attempt in range(1, max_retries + 1):
+        try:
+            conn = pymysql.connect(
+                host=host, port=port, user=user, password=password,
+                database=database, connect_timeout=5
+            )
+            # Verify a real table exists (init scripts completed)
+            cursor = conn.cursor()
+            cursor.execute("SELECT COUNT(*) FROM local_users")
+            count = cursor.fetchone()[0]
+            cursor.close()
+            conn.close()
+            print(f"DB ready: {count} users found (attempt {attempt}/{max_retries})")
+            return True
+        except Exception as e:
+            print(f"DB not ready (attempt {attempt}/{max_retries}): {e}")
+            if attempt < max_retries:
+                time.sleep(retry_interval)
+
+    print("ERROR: Database not ready after all retries. Exiting.")
+    return False
+
 
 from license_tracker.app import create_app
 
@@ -55,6 +108,10 @@ def get_ssl_paths():
 
 
 if __name__ == '__main__':
+    # Wait for DB to be fully initialized before starting
+    if not wait_for_db():
+        sys.exit(1)
+
     app = create_app(config_filename="config.py")
     
     # Get configuration from environment

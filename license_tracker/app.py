@@ -67,6 +67,7 @@ def create_app(config_filename=None, config=None):
        return User.query.filter(User.id_==user_id).first()
    
     from license_tracker.utils.license_history_data_utils import get_license_data, get_license_history_data
+    from license_tracker.utils.dashboard_scheduler import generate_realtime_snapshot, cleanup_old_data
     scheduler = APScheduler()
     scheduler.api_enabled = True
     scheduler.init_app(app)
@@ -80,12 +81,17 @@ def create_app(config_filename=None, config=None):
         with app.app_context():
             get_license_history_data()
     
-    scheduler.start()
+    @scheduler.task('interval', id='realtime_snapshot', seconds=300, misfire_grace_time=900)
+    def realtime_usage_snapshot():
+        with app.app_context():
+            generate_realtime_snapshot()
     
-    # from apscheduler.schedulers.background import BackgroundScheduler
-    # scheduler = BackgroundScheduler()
-    # scheduler.add_job(func=get_license_data, trigger="interval", seconds=300)
-    # scheduler.start()
+    @scheduler.task('cron', id='daily_cleanup', hour=2, minute=0, misfire_grace_time=3600)
+    def daily_data_cleanup():
+        with app.app_context():
+            cleanup_old_data()
+    
+    scheduler.start()
     
     #from feedback_collector.api import process_blueprint
     # Configure CORS
@@ -119,7 +125,9 @@ def create_app(config_filename=None, config=None):
     #from feedback_collector.api import process_blueprint
     from license_tracker.api import license_blueprint,home_blueprint
     from license_tracker.api.admin import admin_blueprint
+    from license_tracker.api.dashboard import dashboard_blueprint
     app.register_blueprint(home_blueprint)
     app.register_blueprint(license_blueprint,url_prefix="/license")
     app.register_blueprint(admin_blueprint,url_prefix="/api/admin")
+    app.register_blueprint(dashboard_blueprint,url_prefix="/api/dashboard")
     return app

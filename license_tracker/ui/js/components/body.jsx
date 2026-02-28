@@ -12,8 +12,7 @@ const { Option } = Select;
 const { Search } = Input;
 import ChartItem from './chart';
 import { LoginPage } from './loginpage';
-// import { RegisterPage } from './registerpage';
-// import { AdminPanel } from './adminpanel';
+import { AdminPanel } from './adminpanel';
 import License_Table from './license_table'
 import { LoginGraph } from './license_graph';
 import { HistoricalUsage } from './historical_usage';
@@ -29,14 +28,13 @@ const axiosInstance = axios.create({
 const onSearch = (value) => console.log(value);
 
 let message = '';
-    const currentUrl = window.location.href;
-    if (false)
-      message = (
-        <div style={{ color: "red", right: 0, position: 'absolute' }}>
-          <p>This is a test version.</p>
-        </div>
-      ); 
-
+const currentUrl = window.location.href;
+if (false)
+  message = (
+    <div style={{ color: "red", right: 0, position: 'absolute' }}>
+      <p>This is a test version.</p>
+    </div>
+  );
 
 export class Body extends React.Component {
   constructor(props) {
@@ -53,8 +51,8 @@ export class Body extends React.Component {
       fearture_list_arr: [],
       server_info_arr: [],
       output_text_arr: [],
-      features:[],
-      currentPage: "",
+      features: [],
+      currentPage: "login",
       isLoggedIn: false,
       isAdmin: false,
       user: "",
@@ -63,14 +61,10 @@ export class Body extends React.Component {
       registrationEnabled: true,
       generatingLiveData: false,
     };
-    
-    //this.formRef = React.createRef();
-    //this.searchInput = React.createRef();
+
     this.generateLiveData = this.generateLiveData.bind(this);
     this.clearLiveData = this.clearLiveData.bind(this);
   }
-
-
 
   onCheckboxChange(e) {
     e.target.checked ? this.setState({ is_inuse: true }) : this.setState({ is_inuse: false })
@@ -87,7 +81,7 @@ export class Body extends React.Component {
             isAdmin: false,
             user: "",
             mail_id: "",
-            currentPage: 1,
+            currentPage: "login",
             loading: false
           });
           notification["success"]({
@@ -108,16 +102,16 @@ export class Body extends React.Component {
     let regions = []
     let apps = []
     let app_reg = []
-    value.map(item=>
-      {
-        app_reg =  item.split(" ")
-        regions.push(app_reg[1])
-        apps.push(app_reg[0])
-      }    
+    value.map(item =>
+    {
+      app_reg =  item.split(" ")
+      regions.push(app_reg[1])
+      apps.push(app_reg[0])
+    }    
     )
     this.setState({ region: regions })
     this.setState({ application: apps })
-    
+
     axiosInstance.post('/license/get_feature', {
       "application": this.state.application,
       "region": this.state.region,
@@ -175,7 +169,6 @@ export class Body extends React.Component {
         this.setState({ loading: false })
       })
   }
-
 
   generateLiveData() {
     this.setState({ generatingLiveData: true });
@@ -284,7 +277,6 @@ export class Body extends React.Component {
 
     const onLoginFinish = values => {
       this.setState({ loading: true })
-      //console.log('Received values of form: ', values);
       axiosInstance.post('/license/login', {
         user_name: values["username"],
         password: values["password"],
@@ -296,20 +288,19 @@ export class Body extends React.Component {
           user: username,
           isLoggedIn: true,
           isAdmin: isAdmin,
-          currentPage: 1,
+          currentPage: 'dashboard',
           loading: false
         })
         notification["success"]({
-          message: "Success",
-          duration: 20,
-          description: 'Successfully logged in',
+          message: "Welcome, " + username,
+          duration: 3,
+          description: 'Successfully logged in' + (isAdmin ? ' as administrator' : ''),
         });
       }).catch(function (error) {
-        //console.log(error)
         notification["error"]({
-          message: "Error!",
+          message: "Login Failed",
           duration: 5,
-          description: (error.response && error.response.data && error.response.data.error) || 'Unable to login'
+          description: (error.response && error.response.data && error.response.data.error) || 'Invalid username or password'
         });
       }
       ).finally(() => {
@@ -328,6 +319,28 @@ export class Body extends React.Component {
 
     const onRadioChange = e => {
       this.setState({ radio_val: e.target.value });
+    };
+
+    const onLogout = () => {
+      this.setState({ loading: true })
+      axiosInstance.get("/license/logout")
+        .then(res => {
+          this.setState({
+            isLoggedIn: false,
+            isAdmin: false,
+            user: "",
+            mail_id: "",
+            currentPage: "login",
+            loading: false
+          });
+          notification["success"]({
+            message: "Logged Out",
+            duration: 3,
+            description: "Successfully logged out"
+          })
+        }).catch(error => {
+          this.setState({ loading: false })
+        })
     };
 
     const menuUserName = (
@@ -437,7 +450,8 @@ export class Body extends React.Component {
         {this.state.isLoggedIn ? menuUserName : null}
         {this.state.isLoggedIn ? menuLoggedIn : menuLoggedOut}
         {!this.state.isLoggedIn && this.state.registrationEnabled ? menuRegister : null}
-      </Menu>);
+      </Menu>
+    );
     const header = (
       <Header className="header" style={{ position: 'fixed', zIndex: 1, width: '100%', height: 80, background: 'linear-gradient(90deg, #0d9488 0%, #0891b2 100%)' }}>
         <div className="logo" /><span className="logo_text"></span>
@@ -577,38 +591,27 @@ export class Body extends React.Component {
     );
 
     let displayedPage = <div></div>;
-    if (this.state.currentPage == '1') {
+    if (this.state.currentPage === 'home' || this.state.currentPage === '1') {
       displayedPage = license_tracker_overview_page;
     }
-    else if (this.state.currentPage == '2') {
-      displayedPage = <div> {this.state.loading ? <Spin tip="Loading..." style={{ position: "absolute", left: "0px", top: "45%", width: "100%", height: "100%", zIndex: "100" }} /> : null}
-        <LoginPage onLoginFinish={onLoginFinish} />
-      </div>
+    else if (this.state.currentPage === 'dashboard' || this.state.currentPage === '') {
+      displayedPage = <Dashboard />;
     }
-    else if (this.state.currentPage == '4') {
-      displayedPage = <div> {this.state.loading ? <Spin tip="Loading..." style={{ position: "absolute", left: "0px", top: "45%", width: "100%", height: "100%", zIndex: "100" }} /> : null}
-        <LoginGraph />
-      </div>
-    }
-    else if (this.state.currentPage == '7') {
+    else if (this.state.currentPage === '7') {
       displayedPage = <div> {this.state.loading ? <Spin tip="Loading..." style={{ position: "absolute", left: "0px", top: "45%", width: "100%", height: "100%", zIndex: "100" }} /> : null}
         <HistoricalUsage />
       </div>
     }
-    else if (this.state.currentPage == '8') {
+    else if (this.state.currentPage === '8') {
       displayedPage = <div> {this.state.loading ? <Spin tip="Loading..." style={{ position: "absolute", left: "0px", top: "45%", width: "100%", height: "100%", zIndex: "100" }} /> : null}
         <HistoricalUtilization />
       </div>
     }
-    // Admin panel and register page temporarily disabled
-    // else if (this.state.currentPage == '5') {
-    // displayedPage = <AdminPanel />
-    // }
-    // else if (this.state.currentPage == '6') {
-    // displayedPage = <RegisterPage onRegisterSuccess={onRegisterSuccess} onBackToLogin={onBackToLogin} />
-    // }
+    else if (this.state.currentPage === 'admin' && this.state.isAdmin) {
+      displayedPage = <AdminPanel />
+    }
     else {
-      displayedPage = license_tracker_overview_page;
+      displayedPage = <Dashboard />;
     }
 
     const sidebarStyle = {
@@ -676,27 +679,67 @@ export class Body extends React.Component {
           <DashboardOutlined style={menuIconStyle} />
           <span style={menuLabelStyle}>DASHBOARD</span>
         </div>
-        <div 
-          style={this.state.currentPage === '7' ? menuItemActiveStyle : menuItemStyle}
-          onClick={() => this.setState({ currentPage: '7' })}
-        >
-          <BarChartOutlined style={menuIconStyle} />
-          <span style={menuLabelStyle}>REPORTING</span>
-        </div>
-        <div 
-          style={this.state.currentPage === '8' ? menuItemActiveStyle : menuItemStyle}
-          onClick={() => this.setState({ currentPage: '8' })}
-        >
-          <DollarOutlined style={menuIconStyle} />
-          <span style={menuLabelStyle}>COSTING</span>
+        {this.state.isAdmin ? (
+          <div 
+            style={this.state.currentPage === '7' ? menuItemActiveStyle : menuItemStyle}
+            onClick={() => this.setState({ currentPage: '7' })}
+          >
+            <BarChartOutlined style={menuIconStyle} />
+            <span style={menuLabelStyle}>REPORTING</span>
+          </div>
+        ) : null}
+        {this.state.isAdmin ? (
+          <div 
+            style={this.state.currentPage === '8' ? menuItemActiveStyle : menuItemStyle}
+            onClick={() => this.setState({ currentPage: '8' })}
+          >
+            <DollarOutlined style={menuIconStyle} />
+            <span style={menuLabelStyle}>COSTING</span>
+          </div>
+        ) : null}
+        {this.state.isAdmin ? (
+          <div 
+            style={this.state.currentPage === 'admin' ? menuItemActiveStyle : menuItemStyle}
+            onClick={() => this.setState({ currentPage: 'admin' })}
+          >
+            <SettingOutlined style={menuIconStyle} />
+            <span style={menuLabelStyle}>ADMIN</span>
+          </div>
+        ) : null}
+        {/* Spacer */}
+        <div style={{ flex: 1 }}></div>
+        {/* User info + Logout at bottom */}
+        <div style={{ position: 'absolute', bottom: 0, width: '100%', borderTop: '1px solid #e5e7eb' }}>
+          <div style={{ padding: '10px 8px', textAlign: 'center' }}>
+            <UserOutlined style={{ fontSize: '14px', color: '#1e3a5f' }} />
+            <div style={{ fontSize: '9px', color: '#333', fontWeight: '500', marginTop: '2px', wordBreak: 'break-all' }}>{this.state.user}</div>
+          </div>
+          <div 
+            style={Object.assign({}, menuItemStyle, { color: '#ef4444', borderTop: '1px solid #f3f4f6' })}
+            onClick={onLogout}
+          >
+            <LogoutOutlined style={menuIconStyle} />
+            <span style={menuLabelStyle}>LOGOUT</span>
+          </div>
         </div>
       </div>
     );
 
-    if (this.state.currentPage === 'dashboard' || this.state.currentPage === '') {
-      displayedPage = <Dashboard />;
-    } else if (this.state.currentPage === 'home') {
-      displayedPage = license_tracker_overview_page;
+    if (!this.state.isLoggedIn) {
+      return (
+        <Layout className="layout" style={{ overflowY: "hidden", minHeight: '100vh', backgroundColor: '#e8ecf1' }}>
+          <Content style={{ backgroundColor: '#e8ecf1', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ width: '100%', maxWidth: 420, padding: '40px', backgroundColor: '#fff', borderRadius: '16px', boxShadow: '0 4px 24px rgba(0,0,0,0.10)' }}>
+              <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+                <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#1e3a5f', letterSpacing: '2px' }}>VIZVALYTICS</span>
+                <div style={{ fontSize: '13px', color: '#6b7280', marginTop: '4px' }}>License Tracker</div>
+              </div>
+              {this.state.loading ? <Spin tip="Logging in..." style={{ display: 'block', margin: '20px auto' }} /> : null}
+              <LoginPage onLoginFinish={onLoginFinish} />
+            </div>
+          </Content>
+        </Layout>
+      );
     }
 
     return (

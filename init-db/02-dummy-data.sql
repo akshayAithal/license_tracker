@@ -3,15 +3,15 @@
 
 USE license_tracker;
 
--- Insert dummy users (password for all test users is 'password', except user_1 which is 'pass')
--- Password hash is bcrypt hash of 'password' or pbkdf2 hash for user_1
+-- Default users: admin and user_1 both use password 'password@1234'
+-- Other test users also use 'password@1234' (pbkdf2:sha256 hash)
 INSERT INTO local_users (login, email, password_hash, type, site_code, is_active) VALUES
-('admin', 'admin@example.com', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/X4.G.y.0yCwRQ3Y7K', 'ADMIN', 'HQ', TRUE),
-('john.doe', 'john.doe@example.com', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/X4.G.y.0yCwRQ3Y7K', 'USER', 'EU-LON', TRUE),
-('jane.smith', 'jane.smith@example.com', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/X4.G.y.0yCwRQ3Y7K', 'USER', 'US-NYC', TRUE),
-('bob.wilson', 'bob.wilson@example.com', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/X4.G.y.0yCwRQ3Y7K', 'USER', 'APAC-SG', TRUE),
-('alice.chen', 'alice.chen@example.com', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/X4.G.y.0yCwRQ3Y7K', 'USER', 'EU-BER', TRUE),
-('user_1', 'user_1@example.com', 'pbkdf2:sha256:260000$temp$willberesetbyapp', 'USER', 'HQ', TRUE),
+('admin', 'admin@example.com', 'pbkdf2:sha256:260000$2VFcS7C0MHffNIb2$7ce6cb0ccb2b2045de97b3b36e5004351cb86dc4d4464bb5ae428333d0af75cf', 'ADMIN', 'HQ', TRUE),
+('user_1', 'user_1@example.com', 'pbkdf2:sha256:260000$2VFcS7C0MHffNIb2$7ce6cb0ccb2b2045de97b3b36e5004351cb86dc4d4464bb5ae428333d0af75cf', 'USER', 'HQ', TRUE),
+('john.doe', 'john.doe@example.com', 'pbkdf2:sha256:260000$2VFcS7C0MHffNIb2$7ce6cb0ccb2b2045de97b3b36e5004351cb86dc4d4464bb5ae428333d0af75cf', 'USER', 'EU-LON', TRUE),
+('jane.smith', 'jane.smith@example.com', 'pbkdf2:sha256:260000$2VFcS7C0MHffNIb2$7ce6cb0ccb2b2045de97b3b36e5004351cb86dc4d4464bb5ae428333d0af75cf', 'USER', 'US-NYC', TRUE),
+('bob.wilson', 'bob.wilson@example.com', 'pbkdf2:sha256:260000$2VFcS7C0MHffNIb2$7ce6cb0ccb2b2045de97b3b36e5004351cb86dc4d4464bb5ae428333d0af75cf', 'USER', 'APAC-SG', TRUE),
+('alice.chen', 'alice.chen@example.com', 'pbkdf2:sha256:260000$2VFcS7C0MHffNIb2$7ce6cb0ccb2b2045de97b3b36e5004351cb86dc4d4464bb5ae428333d0af75cf', 'USER', 'EU-BER', TRUE),
 ('mike.jones', 'mike.jones@example.com', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/X4.G.y.0yCwRQ3Y7K', 'USER', 'US-NYC', TRUE),
 ('sarah.lee', 'sarah.lee@example.com', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/X4.G.y.0yCwRQ3Y7K', 'USER', 'APAC-SG', TRUE),
 ('david.kim', 'david.kim@example.com', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/X4.G.y.0yCwRQ3Y7K', 'USER', 'EU-LON', TRUE),
