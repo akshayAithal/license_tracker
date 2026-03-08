@@ -25,11 +25,15 @@ BEGIN
     DECLARE total_used INT;
     DECLARE lic_used INT;
     DECLARE dt DATETIME;
+    DECLARE checkout_dt DATETIME;
+    DECLARE spent DECIMAL(8,2);
+    DECLARE uid INT;
     DECLARE app_idx INT;
     DECLARE user_idx INT;
     DECLARE feature_idx INT;
     DECLARE days_ago INT;
     DECLARE hours_offset INT;
+    DECLARE usage_hours INT;
     
     WHILE i < num_records DO
         -- Random app selection (1-4)
@@ -65,37 +69,42 @@ BEGIN
         SET region = ELT(FLOOR(1 + RAND() * 3), 'EU', 'APAC', 'AME');
         SET server = CONCAT('license-server-', LOWER(region));
         
-        -- Random user selection (1-10)
+        -- Random user selection (1-10) with matching user_id
         SET user_idx = FLOOR(1 + RAND() * 10);
         CASE user_idx
-            WHEN 1 THEN SET username = 'john.doe'; SET host = 'workstation-01'; SET site_code = 'EU-LON';
-            WHEN 2 THEN SET username = 'jane.smith'; SET host = 'workstation-02'; SET site_code = 'US-NYC';
-            WHEN 3 THEN SET username = 'bob.wilson'; SET host = 'workstation-03'; SET site_code = 'APAC-SG';
-            WHEN 4 THEN SET username = 'alice.chen'; SET host = 'workstation-04'; SET site_code = 'EU-BER';
-            WHEN 5 THEN SET username = 'admin'; SET host = 'server-01'; SET site_code = 'HQ';
-            WHEN 6 THEN SET username = 'mike.jones'; SET host = 'workstation-10'; SET site_code = 'US-NYC';
-            WHEN 7 THEN SET username = 'sarah.lee'; SET host = 'workstation-11'; SET site_code = 'APAC-SG';
-            WHEN 8 THEN SET username = 'david.kim'; SET host = 'workstation-12'; SET site_code = 'EU-LON';
-            WHEN 9 THEN SET username = 'emma.white'; SET host = 'workstation-13'; SET site_code = 'US-NYC';
-            ELSE SET username = 'chris.brown'; SET host = 'workstation-14'; SET site_code = 'EU-BER';
+            WHEN 1 THEN SET username = 'john.doe'; SET host = 'workstation-01'; SET site_code = 'EU-LON'; SET uid = 3;
+            WHEN 2 THEN SET username = 'jane.smith'; SET host = 'workstation-02'; SET site_code = 'US-NYC'; SET uid = 4;
+            WHEN 3 THEN SET username = 'bob.wilson'; SET host = 'workstation-03'; SET site_code = 'APAC-SG'; SET uid = 5;
+            WHEN 4 THEN SET username = 'alice.chen'; SET host = 'workstation-04'; SET site_code = 'EU-BER'; SET uid = 6;
+            WHEN 5 THEN SET username = 'admin'; SET host = 'server-01'; SET site_code = 'HQ'; SET uid = 1;
+            WHEN 6 THEN SET username = 'mike.jones'; SET host = 'workstation-10'; SET site_code = 'US-NYC'; SET uid = 7;
+            WHEN 7 THEN SET username = 'sarah.lee'; SET host = 'workstation-11'; SET site_code = 'APAC-SG'; SET uid = 8;
+            WHEN 8 THEN SET username = 'david.kim'; SET host = 'workstation-12'; SET site_code = 'EU-LON'; SET uid = 9;
+            WHEN 9 THEN SET username = 'emma.white'; SET host = 'workstation-13'; SET site_code = 'US-NYC'; SET uid = 10;
+            ELSE SET username = 'chris.brown'; SET host = 'workstation-14'; SET site_code = 'EU-BER'; SET uid = 11;
         END CASE;
         
         SET user_key = CONCAT(username, '@', host);
         
-        -- Random date within last 365 days
+        -- Random date within last 365 days (this is the check_in time)
         SET days_ago = FLOOR(RAND() * 365);
         SET hours_offset = FLOOR(RAND() * 24);
         SET dt = DATE_SUB(NOW(), INTERVAL days_ago DAY) - INTERVAL hours_offset HOUR;
+        
+        -- check_out time (1-8 hours before check_in)
+        SET usage_hours = FLOOR(1 + RAND() * 8);
+        SET checkout_dt = DATE_SUB(dt, INTERVAL usage_hours HOUR);
+        SET spent = usage_hours + ROUND(RAND(), 2);
         
         -- Random license usage
         SET lic_used = FLOOR(1 + RAND() * 5);
         SET total_used = FLOOR(total_lic * 0.2 + RAND() * total_lic * 0.7);
         
-        -- Insert record
+        -- Insert record with full lifecycle data
         INSERT INTO license_history_logs 
-            (application, region, user, server, host, software, feature, version, user_key, date_time, license_used, site_code, total_license, total_license_used)
+            (user_id, application, region, user, server, host, software, feature, version, user_key, date_time, check_out, check_in, spent_hours, license_used, site_code, total_license, total_license_used)
         VALUES 
-            (app, region, username, server, host, software, feature, version, user_key, dt, lic_used, site_code, total_lic, total_used);
+            (uid, app, region, username, server, host, software, feature, version, user_key, dt, checkout_dt, dt, CAST(spent AS CHAR), lic_used, site_code, total_lic, total_used);
         
         SET i = i + 1;
     END WHILE;

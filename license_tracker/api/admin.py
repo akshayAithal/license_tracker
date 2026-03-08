@@ -372,6 +372,66 @@ def update_auth_settings():
     })
 
 
+# ============ AI / Model Settings ============
+
+@admin_blueprint.route("/ai/settings", methods=["GET"])
+@admin_required
+def get_ai_settings():
+    """Get AI/model configuration settings."""
+    return jsonify({
+        "success": True,
+        "ai_settings": {
+            "ai_provider": AppSettings.get_setting('ai_provider', 'openai'),
+            "openai_api_key": AppSettings.get_setting('openai_api_key', ''),
+            "openai_model": AppSettings.get_setting('openai_model', 'gpt-4o-mini'),
+            "local_model_url": AppSettings.get_setting('local_model_url', ''),
+            "local_model_name": AppSettings.get_setting('local_model_name', 'default'),
+            "local_model_api_key": AppSettings.get_setting('local_model_api_key', ''),
+        }
+    })
+
+
+@admin_blueprint.route("/ai/settings", methods=["PUT"])
+@admin_required
+def update_ai_settings():
+    """Update AI/model configuration settings."""
+    data = request.get_json()
+
+    ai_keys = {
+        'ai_provider': ('string', 'AI provider: openai or local'),
+        'openai_api_key': ('string', 'OpenAI API key'),
+        'openai_model': ('string', 'OpenAI model name'),
+        'local_model_url': ('string', 'Local LLM API URL'),
+        'local_model_name': ('string', 'Local LLM model name'),
+        'local_model_api_key': ('string', 'Local LLM API key'),
+    }
+
+    updated = []
+    for key, (setting_type, description) in ai_keys.items():
+        if key in data:
+            AppSettings.set_setting(key, data[key], setting_type, description)
+            updated.append(key)
+
+    logger.info(f"Admin {current_user.login} updated AI settings: {updated}")
+
+    return jsonify({
+        "success": True,
+        "updated": updated
+    })
+
+
+@admin_blueprint.route("/ai/test", methods=["POST"])
+@admin_required
+def test_ai_connection():
+    """Test AI service connection with current settings."""
+    from license_tracker.utils.ai_service import get_ai_service
+    service, err = get_ai_service()
+    if not service:
+        return jsonify({"success": False, "error": err or "AI not configured"}), 400
+    result = service.test_connection()
+    return jsonify(result)
+
+
 # ============ Current User Info ============
 
 @admin_blueprint.route("/current-user", methods=["GET"])

@@ -63,7 +63,7 @@ def create_app(config_filename=None, config=None):
     from license_tracker.models.users import User
     @login_manager.user_loader
     def load_user(user_id):
-       logger.debug(f"Attempting to load user #{user_id}")
+       logger.debug("Attempting to load user #%s" % user_id)
        return User.query.filter(User.id_==user_id).first()
    
     from license_tracker.utils.license_history_data_utils import get_license_data, get_license_history_data
@@ -126,8 +126,12 @@ def create_app(config_filename=None, config=None):
     from license_tracker.api import license_blueprint,home_blueprint
     from license_tracker.api.admin import admin_blueprint
     from license_tracker.api.dashboard import dashboard_blueprint
+    from license_tracker.api.costing import costing_blueprint
+    from license_tracker.api.chat import chat_blueprint
     app.register_blueprint(home_blueprint)
     app.register_blueprint(license_blueprint,url_prefix="/license")
     app.register_blueprint(admin_blueprint,url_prefix="/api/admin")
     app.register_blueprint(dashboard_blueprint,url_prefix="/api/dashboard")
+    app.register_blueprint(costing_blueprint,url_prefix="/api/costing")
+    app.register_blueprint(chat_blueprint,url_prefix="/api/chat")
     return app

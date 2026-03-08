@@ -1,16 +1,16 @@
 
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from flask_login import UserMixin
 from .db import db
-from .user_type import UserType
-from sqlalchemy.sql import func
 from datetime import datetime
 
-class LicenseDetail(UserMixin, db.Model):
-    
+
+class LicenseDetail(db.Model):
+    """Active/live license checkouts. When a license is checked back in,
+    the record moves to license_history_logs."""
     __tablename__ = "license_details"
     id_ = db.Column("id", db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('local_users.id'), nullable=True)
     application = db.Column(db.String(16), nullable=True)
     region = db.Column(db.String(16), nullable=True)
     user = db.Column(db.String(64), nullable=False)
@@ -24,9 +24,18 @@ class LicenseDetail(UserMixin, db.Model):
     spent_hours = db.Column(db.String(16), nullable=True)
     total_license = db.Column(db.Integer, nullable=True)
     total_license_used = db.Column(db.Integer, nullable=True)
-    created_at = db.Column(db.DateTime, default = datetime.now())
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    def __init__(self, application, region, user, host, feature, user_key, license_used, site_code, check_out, check_in, spent_hours, total_license, total_license_used):
+    __table_args__ = (
+        db.Index('idx_active_checkouts', 'check_in', 'application', 'feature'),
+        db.Index('idx_user_id', 'user_id'),
+    )
+
+    # ORM relationship
+    owner = db.relationship('User', backref=db.backref('license_checkouts', lazy='dynamic'))
+
+    def __init__(self, application, region, user, host, feature, user_key, license_used, site_code, check_out, check_in, spent_hours, total_license, total_license_used, user_id=None):
+        self.user_id = user_id
         self.application = application
         self.region = region
         self.user = user
@@ -40,4 +49,4 @@ class LicenseDetail(UserMixin, db.Model):
         self.check_in = check_in
         self.spent_hours = spent_hours
         self.total_license_used = total_license_used
-        self.created_at = datetime.now()
+        self.created_at = datetime.utcnow()

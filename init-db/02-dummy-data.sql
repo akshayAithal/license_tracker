@@ -34,18 +34,19 @@ INSERT INTO app_settings (setting_key, setting_value, setting_type, description)
 ('registration_enabled', 'true', 'boolean', 'Allow new user registration'),
 ('redmine_auth_enabled', 'false', 'boolean', 'Enable Redmine/ERM authentication');
 
--- Insert dummy license details (currently active licenses)
-INSERT INTO license_details (application, region, user, host, feature, user_key, license_used, site_code, check_out, check_in, spent_hours, total_license, total_license_used) VALUES
-('MSC', 'EU', 'john.doe', 'workstation-01', 'nastran', 'john.doe@workstation-01', 2, 'EU-LON', '2026-01-31 08:00:00', NULL, NULL, 100, 45),
-('MSC', 'EU', 'jane.smith', 'workstation-02', 'patran', 'jane.smith@workstation-02', 1, 'EU-LON', '2026-01-31 09:30:00', NULL, NULL, 50, 22),
-('MSC', 'APAC', 'bob.wilson', 'workstation-03', 'nastran', 'bob.wilson@workstation-03', 3, 'APAC-SG', '2026-01-31 07:00:00', NULL, NULL, 100, 67),
-('Altair', 'EU', 'alice.chen', 'workstation-04', 'hyperworks', 'alice.chen@workstation-04', 1, 'EU-BER', '2026-01-31 10:15:00', NULL, NULL, 75, 34),
-('Altair', 'AME', 'john.doe', 'workstation-05', 'hypermesh', 'john.doe@workstation-05', 2, 'US-NYC', '2026-01-31 14:00:00', NULL, NULL, 75, 28),
-('MSC', 'AME', 'jane.smith', 'workstation-06', 'marc', 'jane.smith@workstation-06', 1, 'US-NYC', '2026-01-31 13:45:00', NULL, NULL, 40, 18),
-('RLM', 'EU', 'bob.wilson', 'workstation-07', 'masta', 'bob.wilson@workstation-07', 1, 'EU-LON', '2026-01-31 11:00:00', NULL, NULL, 25, 12),
-('Altair', 'APAC', 'alice.chen', 'workstation-08', 'radioss', 'alice.chen@workstation-08', 2, 'APAC-SG', '2026-01-31 06:30:00', NULL, NULL, 60, 41),
-('MSC', 'EU', 'admin', 'server-01', 'nastran', 'admin@server-01', 5, 'HQ', '2026-01-31 05:00:00', NULL, NULL, 100, 45),
-('Particleworks', 'APAC', 'bob.wilson', 'workstation-09', 'particleworks', 'bob.wilson@workstation-09', 1, 'APAC-SG', '2026-01-31 08:30:00', NULL, NULL, 10, 6);
+-- Insert dummy license details (currently active checkouts)
+-- user_id references: admin=1, user_1=2, john.doe=3, jane.smith=4, bob.wilson=5, alice.chen=6
+INSERT INTO license_details (user_id, application, region, user, host, feature, user_key, license_used, site_code, check_out, check_in, spent_hours, total_license, total_license_used) VALUES
+(3, 'MSC', 'EU', 'john.doe', 'workstation-01', 'nastran', 'john.doe@workstation-01', 2, 'EU-LON', '2026-01-31 08:00:00', NULL, NULL, 100, 45),
+(4, 'MSC', 'EU', 'jane.smith', 'workstation-02', 'patran', 'jane.smith@workstation-02', 1, 'EU-LON', '2026-01-31 09:30:00', NULL, NULL, 50, 22),
+(5, 'MSC', 'APAC', 'bob.wilson', 'workstation-03', 'nastran', 'bob.wilson@workstation-03', 3, 'APAC-SG', '2026-01-31 07:00:00', NULL, NULL, 100, 67),
+(6, 'Altair', 'EU', 'alice.chen', 'workstation-04', 'hyperworks', 'alice.chen@workstation-04', 1, 'EU-BER', '2026-01-31 10:15:00', NULL, NULL, 75, 34),
+(3, 'Altair', 'AME', 'john.doe', 'workstation-05', 'hypermesh', 'john.doe@workstation-05', 2, 'US-NYC', '2026-01-31 14:00:00', NULL, NULL, 75, 28),
+(4, 'MSC', 'AME', 'jane.smith', 'workstation-06', 'marc', 'jane.smith@workstation-06', 1, 'US-NYC', '2026-01-31 13:45:00', NULL, NULL, 40, 18),
+(5, 'RLM', 'EU', 'bob.wilson', 'workstation-07', 'masta', 'bob.wilson@workstation-07', 1, 'EU-LON', '2026-01-31 11:00:00', NULL, NULL, 25, 12),
+(6, 'Altair', 'APAC', 'alice.chen', 'workstation-08', 'radioss', 'alice.chen@workstation-08', 2, 'APAC-SG', '2026-01-31 06:30:00', NULL, NULL, 60, 41),
+(1, 'MSC', 'EU', 'admin', 'server-01', 'nastran', 'admin@server-01', 5, 'HQ', '2026-01-31 05:00:00', NULL, NULL, 100, 45),
+(5, 'Particleworks', 'APAC', 'bob.wilson', 'workstation-09', 'particleworks', 'bob.wilson@workstation-09', 1, 'APAC-SG', '2026-01-31 08:30:00', NULL, NULL, 10, 6);
 
 -- Insert dummy license history logs (2000 records - 100x expansion)
 -- This uses a stored procedure to generate random data spanning 365 days
@@ -72,11 +73,15 @@ BEGIN
     DECLARE total_used INT;
     DECLARE lic_used INT;
     DECLARE dt DATETIME;
+    DECLARE checkout_dt DATETIME;
+    DECLARE spent DECIMAL(8,2);
+    DECLARE uid INT;
     DECLARE app_idx INT;
     DECLARE user_idx INT;
     DECLARE feature_idx INT;
     DECLARE days_ago INT;
     DECLARE hours_offset INT;
+    DECLARE usage_hours INT;
     
     WHILE i < num_records DO
         SET app_idx = FLOOR(1 + RAND() * 4);
@@ -109,31 +114,37 @@ BEGIN
         SET region = ELT(FLOOR(1 + RAND() * 3), 'EU', 'APAC', 'AME');
         SET server = CONCAT('license-server-', LOWER(region));
         
+        -- Random user selection (1-10) with matching user_id
         SET user_idx = FLOOR(1 + RAND() * 10);
         CASE user_idx
-            WHEN 1 THEN SET username = 'john.doe'; SET host = 'workstation-01'; SET site_code = 'EU-LON';
-            WHEN 2 THEN SET username = 'jane.smith'; SET host = 'workstation-02'; SET site_code = 'US-NYC';
-            WHEN 3 THEN SET username = 'bob.wilson'; SET host = 'workstation-03'; SET site_code = 'APAC-SG';
-            WHEN 4 THEN SET username = 'alice.chen'; SET host = 'workstation-04'; SET site_code = 'EU-BER';
-            WHEN 5 THEN SET username = 'admin'; SET host = 'server-01'; SET site_code = 'HQ';
-            WHEN 6 THEN SET username = 'mike.jones'; SET host = 'workstation-10'; SET site_code = 'US-NYC';
-            WHEN 7 THEN SET username = 'sarah.lee'; SET host = 'workstation-11'; SET site_code = 'APAC-SG';
-            WHEN 8 THEN SET username = 'david.kim'; SET host = 'workstation-12'; SET site_code = 'EU-LON';
-            WHEN 9 THEN SET username = 'emma.white'; SET host = 'workstation-13'; SET site_code = 'US-NYC';
-            ELSE SET username = 'chris.brown'; SET host = 'workstation-14'; SET site_code = 'EU-BER';
+            WHEN 1 THEN SET username = 'john.doe'; SET host = 'workstation-01'; SET site_code = 'EU-LON'; SET uid = 3;
+            WHEN 2 THEN SET username = 'jane.smith'; SET host = 'workstation-02'; SET site_code = 'US-NYC'; SET uid = 4;
+            WHEN 3 THEN SET username = 'bob.wilson'; SET host = 'workstation-03'; SET site_code = 'APAC-SG'; SET uid = 5;
+            WHEN 4 THEN SET username = 'alice.chen'; SET host = 'workstation-04'; SET site_code = 'EU-BER'; SET uid = 6;
+            WHEN 5 THEN SET username = 'admin'; SET host = 'server-01'; SET site_code = 'HQ'; SET uid = 1;
+            WHEN 6 THEN SET username = 'mike.jones'; SET host = 'workstation-10'; SET site_code = 'US-NYC'; SET uid = 7;
+            WHEN 7 THEN SET username = 'sarah.lee'; SET host = 'workstation-11'; SET site_code = 'APAC-SG'; SET uid = 8;
+            WHEN 8 THEN SET username = 'david.kim'; SET host = 'workstation-12'; SET site_code = 'EU-LON'; SET uid = 9;
+            WHEN 9 THEN SET username = 'emma.white'; SET host = 'workstation-13'; SET site_code = 'US-NYC'; SET uid = 10;
+            ELSE SET username = 'chris.brown'; SET host = 'workstation-14'; SET site_code = 'EU-BER'; SET uid = 11;
         END CASE;
         
         SET user_key = CONCAT(username, '@', host);
         SET days_ago = FLOOR(RAND() * 365);
         SET hours_offset = FLOOR(RAND() * 24);
+        -- check_in time (when the license was returned)
         SET dt = DATE_SUB(NOW(), INTERVAL days_ago DAY) - INTERVAL hours_offset HOUR;
+        -- check_out time (1-8 hours before check_in)
+        SET usage_hours = FLOOR(1 + RAND() * 8);
+        SET checkout_dt = DATE_SUB(dt, INTERVAL usage_hours HOUR);
+        SET spent = usage_hours + ROUND(RAND(), 2);
         SET lic_used = FLOOR(1 + RAND() * 5);
         SET total_used = FLOOR(total_lic * 0.2 + RAND() * total_lic * 0.7);
         
         INSERT INTO license_history_logs 
-            (application, region, user, server, host, software, feature, version, user_key, date_time, license_used, site_code, total_license, total_license_used)
+            (user_id, application, region, user, server, host, software, feature, version, user_key, date_time, check_out, check_in, spent_hours, license_used, site_code, total_license, total_license_used)
         VALUES 
-            (app, region, username, server, host, software, feature, version, user_key, dt, lic_used, site_code, total_lic, total_used);
+            (uid, app, region, username, server, host, software, feature, version, user_key, dt, checkout_dt, dt, CAST(spent AS CHAR), lic_used, site_code, total_lic, total_used);
         
         SET i = i + 1;
     END WHILE;

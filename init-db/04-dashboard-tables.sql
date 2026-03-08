@@ -14,9 +14,11 @@ CREATE TABLE IF NOT EXISTS dashboard_layouts (
     FOREIGN KEY (user_id) REFERENCES local_users(id) ON DELETE CASCADE
 );
 
--- License denials tracking
+-- License denials tracking (links user + license info)
+-- Created when a user attempts to check out a license but is denied
 CREATE TABLE IF NOT EXISTS license_denials (
     id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT,
     application VARCHAR(16),
     region VARCHAR(16),
     user VARCHAR(64) NOT NULL,
@@ -28,7 +30,9 @@ CREATE TABLE IF NOT EXISTS license_denials (
     total_license_used INT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_denied_at (denied_at),
-    INDEX idx_app_region (application, region)
+    INDEX idx_app_region (application, region),
+    INDEX idx_denial_user_id (user_id),
+    FOREIGN KEY (user_id) REFERENCES local_users(id) ON DELETE SET NULL
 );
 
 -- Realtime usage snapshots (taken every 5 minutes by scheduler)
@@ -62,6 +66,7 @@ BEGIN
     DECLARE total_lic INT;
     DECLARE total_used INT;
     DECLARE dt DATETIME;
+    DECLARE uid INT;
     DECLARE app_idx INT;
     DECLARE user_idx INT;
     DECLARE reason_idx INT;
@@ -91,18 +96,19 @@ BEGIN
         SET region = ELT(FLOOR(1 + RAND() * 3), 'EU', 'APAC', 'AME');
         SET total_used = total_lic;
         
+        -- Random user selection with matching user_id
         SET user_idx = FLOOR(1 + RAND() * 10);
         CASE user_idx
-            WHEN 1 THEN SET username = 'john.doe'; SET host = 'workstation-01';
-            WHEN 2 THEN SET username = 'jane.smith'; SET host = 'workstation-02';
-            WHEN 3 THEN SET username = 'bob.wilson'; SET host = 'workstation-03';
-            WHEN 4 THEN SET username = 'alice.chen'; SET host = 'workstation-04';
-            WHEN 5 THEN SET username = 'admin'; SET host = 'server-01';
-            WHEN 6 THEN SET username = 'mike.jones'; SET host = 'workstation-10';
-            WHEN 7 THEN SET username = 'sarah.lee'; SET host = 'workstation-11';
-            WHEN 8 THEN SET username = 'david.kim'; SET host = 'workstation-12';
-            WHEN 9 THEN SET username = 'emma.white'; SET host = 'workstation-13';
-            ELSE SET username = 'chris.brown'; SET host = 'workstation-14';
+            WHEN 1 THEN SET username = 'john.doe'; SET host = 'workstation-01'; SET uid = 3;
+            WHEN 2 THEN SET username = 'jane.smith'; SET host = 'workstation-02'; SET uid = 4;
+            WHEN 3 THEN SET username = 'bob.wilson'; SET host = 'workstation-03'; SET uid = 5;
+            WHEN 4 THEN SET username = 'alice.chen'; SET host = 'workstation-04'; SET uid = 6;
+            WHEN 5 THEN SET username = 'admin'; SET host = 'server-01'; SET uid = 1;
+            WHEN 6 THEN SET username = 'mike.jones'; SET host = 'workstation-10'; SET uid = 7;
+            WHEN 7 THEN SET username = 'sarah.lee'; SET host = 'workstation-11'; SET uid = 8;
+            WHEN 8 THEN SET username = 'david.kim'; SET host = 'workstation-12'; SET uid = 9;
+            WHEN 9 THEN SET username = 'emma.white'; SET host = 'workstation-13'; SET uid = 10;
+            ELSE SET username = 'chris.brown'; SET host = 'workstation-14'; SET uid = 11;
         END CASE;
         
         SET reason_idx = FLOOR(1 + RAND() * 4);
@@ -115,8 +121,8 @@ BEGIN
         
         SET dt = DATE_SUB(NOW(), INTERVAL FLOOR(RAND() * 30) DAY) - INTERVAL FLOOR(RAND() * 24) HOUR - INTERVAL FLOOR(RAND() * 60) MINUTE;
         
-        INSERT INTO license_denials (application, region, user, host, feature, reason, denied_at, total_license, total_license_used)
-        VALUES (app, region, username, host, feature, reason, dt, total_lic, total_used);
+        INSERT INTO license_denials (user_id, application, region, user, host, feature, reason, denied_at, total_license, total_license_used)
+        VALUES (uid, app, region, username, host, feature, reason, dt, total_lic, total_used);
         
         SET i = i + 1;
     END WHILE;

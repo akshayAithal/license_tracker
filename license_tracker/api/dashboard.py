@@ -118,81 +118,79 @@ def get_expiry_alerts():
     try:
         import hashlib
         import random as _random
+        from license_tracker.models.license_cost import LicenseCost
         now = datetime.utcnow()
         application = request.args.get('application', None)
 
-        # Get all active licenses and simulate expiry (check_out + 365 days)
-        query = db.session.query(
-            LicenseDetail.application,
-            LicenseDetail.feature,
-            LicenseDetail.total_license,
-            LicenseDetail.check_out,
-            LicenseDetail.region,
-        ).filter(
-            LicenseDetail.check_out.isnot(None)
-        )
-
+        # Build expiry data from license_costs (billing periods) rather than
+        # active checkouts (license_details), since license_details holds
+        # live usage data, not vendor/expiry information.
+        cost_query = LicenseCost.query
         if application:
-            query = query.filter(LicenseDetail.application == application)
+            cost_query = cost_query.filter(LicenseCost.vendor == application)
+        cost_entries = cost_query.all()
 
-        results = query.all()
-
-        # Group expiries by month
         monthly_expiry = {}
         critical_alerts = []
-        # Detailed per-vendor expiry table
         expiry_details = []
 
-        for row in results:
-            if row.check_out:
-                # Deterministic "random" offset based on feature name
-                seed = int(hashlib.md5(f"{row.application}_{row.feature}".encode()).hexdigest()[:8], 16)
-                days_offset = 30 + (seed % 336)
-                expiry_date = row.check_out + timedelta(days=days_offset)
+        for cost in cost_entries:
+            # Deterministic expiry date based on vendor+feature
+            seed = int(hashlib.md5(f"{cost.vendor}_{cost.feature}".encode()).hexdigest()[:8], 16)
 
-                month_key = expiry_date.strftime('%b').upper()
-                year = expiry_date.year
+            if cost.billing_period == 'monthly':
+                days_offset = 30 + (seed % 30)
+            elif cost.billing_period == 'perpetual':
+                days_offset = 365 * 5  # perpetual = far out
+            else:
+                days_offset = 30 + (seed % 336)  # annual
 
-                key = f"{month_key}_{year}"
-                if key not in monthly_expiry:
-                    monthly_expiry[key] = {
-                        'month': month_key,
-                        'year': year,
-                        'expiring': 0,
-                        'critical': 0,
-                    }
+            base_date = cost.created_at or now
+            expiry_date = base_date + timedelta(days=days_offset)
 
-                monthly_expiry[key]['expiring'] += 1
+            month_key = expiry_date.strftime('%b').upper()
+            year = expiry_date.year
+            key = f"{month_key}_{year}"
 
-                days_until = (expiry_date - now).days
-                status = 'active'
-                if days_until <= 0:
-                    status = 'expired'
-                elif days_until <= 30:
-                    status = 'critical'
-                    monthly_expiry[key]['critical'] += 1
-                elif days_until <= 90:
-                    status = 'warning'
+            if key not in monthly_expiry:
+                monthly_expiry[key] = {
+                    'month': month_key,
+                    'year': year,
+                    'expiring': 0,
+                    'critical': 0,
+                }
 
-                expiry_details.append({
-                    'vendor': row.application,
-                    'feature': row.feature,
-                    'region': row.region,
-                    'total_license': row.total_license,
-                    'expiry_date': expiry_date.strftime('%Y-%m-%d'),
-                    'days_until': days_until,
-                    'status': status,
+            monthly_expiry[key]['expiring'] += 1
+
+            days_until = (expiry_date - now).days
+            status = 'active'
+            if days_until <= 0:
+                status = 'expired'
+            elif days_until <= 30:
+                status = 'critical'
+                monthly_expiry[key]['critical'] += 1
+            elif days_until <= 90:
+                status = 'warning'
+
+            expiry_details.append({
+                'vendor': cost.vendor,
+                'feature': cost.feature,
+                'region': '-',
+                'total_license': None,
+                'expiry_date': expiry_date.strftime('%Y-%m-%d'),
+                'days_until': days_until,
+                'status': status,
+            })
+
+            if status == 'critical':
+                critical_alerts.append({
+                    'application': cost.vendor,
+                    'feature': cost.feature,
+                    'days_until_expiry': days_until,
+                    'total_license': None,
                 })
 
-                if status == 'critical':
-                    critical_alerts.append({
-                        'application': row.application,
-                        'feature': row.feature,
-                        'days_until_expiry': days_until,
-                        'total_license': row.total_license,
-                    })
-
-        # Also create synthetic expiry data from history to fill the chart
+        # Fill remaining months with synthetic data for chart display
         for i in range(12):
             month_date = now + timedelta(days=30 * i)
             month_key = month_date.strftime('%b').upper()
@@ -214,7 +212,6 @@ def get_expiry_alerts():
             key=lambda x: datetime.strptime(f"{x['month']} {x['year']}", '%b %Y')
         )
 
-        # Sort expiry details by date
         expiry_details.sort(key=lambda x: x['expiry_date'])
 
         return jsonify({

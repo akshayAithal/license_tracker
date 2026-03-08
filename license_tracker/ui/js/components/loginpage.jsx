@@ -1,90 +1,81 @@
-import { Button } from 'antd'; // Button = antd.Button
-import { Col } from 'antd';
-import { Row } from 'antd';
-import { Form } from 'antd';
-import { Input } from 'antd';
-import { Select } from 'antd';
-import {  Checkbox  } from 'antd';
-import {UploadOutlined, UserOutlined, LockOutlined , LogoutOutlined, LoginOutlined, } from '@ant-design/icons';
-import { FormInstance } from 'antd/es/form'
+import { Button, Form, Input, Checkbox } from 'antd';
+import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import React from 'react';
 
 
-export const LoginPage = (props)=>
-{
+export const LoginPage = (props) => {
 
-    const LoginProps = {
-        style: {
-            width: '50%',
-            height: "50%",
-            marginTop: "10%",
-            marginLeft: '25%',
-            marginRight: '25%',
-            marginBottom: "25%",
-            paddingTop: '5%',
-            paddingBottom: "5%",
-            paddingLeft: '10%',
-            paddingRight: '10%',
-            // border: "2px solid red",
-            resize: "none"
-        }}
+    const inputStyle = {
+        height: 48,
+        fontSize: 15,
+        borderRadius: 10,
+        backgroundColor: '#f4f6fa',
+        border: '1.5px solid #e0e4ec',
+    };
 
-        const loginPage = (  <div  {...LoginProps}>
-            <Row gutter={24}>  
-            <Col span={ 20 }style={{ maxHeight: "100%" , padding: 10, overflowX: 'auto', overflowY: 'auto'}}>
-            <Form
+    const prefixStyle = {
+        color: '#8c95a6',
+        fontSize: 18,
+        marginRight: 8,
+    };
+
+    return (
+        <Form
             name="normal_login"
-            className="login-form"
-            initialValues={{
-              remember: true,
-            }}
+            initialValues={{ remember: true }}
             onFinish={props.onLoginFinish}
-          >
+            size="large"
+            style={{ width: '100%' }}
+        >
             <Form.Item
-              name="username"
-              rules={[
-                {
-                  required: true,
-                  message: 'Please input your Username!',
-                },
-              ]}
+                name="username"
+                rules={[{ required: true, message: 'Please enter your username' }]}
+                style={{ marginBottom: 20 }}
             >
-              <Input prefix={<UserOutlined className="site-form-item-icon" />} placeholder="Username" />
+                <Input
+                    prefix={<UserOutlined style={prefixStyle} />}
+                    placeholder="Username"
+                    style={inputStyle}
+                />
             </Form.Item>
-            <Form.Item
-              name="password"
-              rules={[
-                {
-                  required: true,
-                  message: 'Please input your Password!',
-                },
-              ]}
-            >
-              <Input
-                prefix={<LockOutlined className="site-form-item-icon" />}
-                type="password"
-                placeholder="Password"
-              />
-            </Form.Item>
-            <Form.Item name="remember" valuePropName="checked" noStyle>
-              <Checkbox>Remember me</Checkbox>
-            </Form.Item>
-    
-            <Form.Item>
-              <Button type="primary" htmlType="submit" className="login-form-button">
-                Log in
-              </Button>
-            </Form.Item>
-          </Form> 
-      </Col>
-      </Row>
-      </div>)
 
-return (
-    <div>
-    {loginPage}
-    </div>
+            <Form.Item
+                name="password"
+                rules={[{ required: true, message: 'Please enter your password' }]}
+                style={{ marginBottom: 16 }}
+            >
+                <Input.Password
+                    prefix={<LockOutlined style={prefixStyle} />}
+                    placeholder="Password"
+                    style={inputStyle}
+                />
+            </Form.Item>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+                <Form.Item name="remember" valuePropName="checked" noStyle>
+                    <Checkbox style={{ fontSize: 13, color: '#6b7280' }}>Remember me</Checkbox>
+                </Form.Item>
+            </div>
+
+            <Form.Item style={{ marginBottom: 0 }}>
+                <Button
+                    type="primary"
+                    htmlType="submit"
+                    block
+                    style={{
+                        height: 48,
+                        fontSize: 16,
+                        fontWeight: 600,
+                        borderRadius: 10,
+                        background: 'linear-gradient(135deg, #1e3a5f 0%, #2d6cad 100%)',
+                        border: 'none',
+                        boxShadow: '0 4px 14px rgba(30, 58, 95, 0.35)',
+                        letterSpacing: 0.5,
+                    }}
+                >
+                    Sign In
+                </Button>
+            </Form.Item>
+        </Form>
     );
-
-
 }

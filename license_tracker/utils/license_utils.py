@@ -249,11 +249,10 @@ def check_altair_lic_status_tbl(almutil_path,server,port_number, inuse):
     if len(feature_list) > 0:
         for feature in feature_list:
             chart_data  = {}
+            sitecode_chart = {}
             # if no license in used 
-            if "TOTAL_LICENSES" in feature:
+            if "TOTAL_LICENSES" in feature and "USED_LICENSES" in feature:
                 lic_remain = int(feature["TOTAL_LICENSES"]) - int(feature["USED_LICENSES"])
-                chart_data  = {}
-                sitecode_chart = {}
                 users_info = feature["users"]
                 for user in users_info:
                     if user["USER_KEY"] not in chart_data:
@@ -335,7 +334,7 @@ def check_msc_lic_status_tbl(lmutil_path,license_path, inuse):
                 chart_data  = {}
                 sitecode_chart = {}
                 # if no license in used 
-                if "TOTAL_LICENSES" in feature:
+                if "TOTAL_LICENSES" in feature and "USED_LICENSES" in feature:
                     lic_remain = int(feature["TOTAL_LICENSES"]) - int(feature["USED_LICENSES"])
                     
                     users_info = feature["users"]
@@ -397,7 +396,7 @@ def check_particleworks_output_tbl(lmutil_path,license_path,inuse ):
                 chart_data  = {}
                 sitecode_chart = {}
                 # if no license in used 
-                if "TOTAL_LICENSES" in feature:
+                if "TOTAL_LICENSES" in feature and "USED_LICENSES" in feature:
                     lic_remain = int(feature["TOTAL_LICENSES"]) - int(feature["USED_LICENSES"])
                     user_name = []
                     users_info = feature["users"]
@@ -480,7 +479,7 @@ def check_ricardo_output_tbl(lmutil_path,license_path,inuse):
                 chart_data  = {}
                 sitecode_chart = {}
                 # if no license in used 
-                if "TOTAL_LICENSES" in feature:
+                if "TOTAL_LICENSES" in feature and "USED_LICENSES" in feature:
                     lic_remain = int(feature["TOTAL_LICENSES"]) - int(feature["USED_LICENSES"])
                     
                     users_info = feature["users"]
@@ -602,7 +601,7 @@ def check_masta_output_tbl(rlmutil_path,license_path,inuse ):
     # f = open("masta_license.txt", "r")
     # out = f.read()
     # out =  out.strip().split("\n")
-    # logger.info(out)
+    logger.info(out)
     logger.info("Start read_masta_output(out) method")
     server_info, feature_list = read_masta_output(out)
     logger.info("End read_masta_output(out) method")
@@ -615,7 +614,7 @@ def check_masta_output_tbl(rlmutil_path,license_path,inuse ):
                 chart_data  = {}
                 sitecode_chart = {}
                 # if no license in used 
-                if "TOTAL_LICENSES" in feature:
+                if "TOTAL_LICENSES" in feature and "USED_LICENSES" in feature:
                     lic_remain = int(feature["TOTAL_LICENSES"]) - int(feature["USED_LICENSES"])
                     
                     users_info = feature["users"]
@@ -764,7 +763,7 @@ def check_rlm_output_tbl(rlmutil_path,license_path,inuse ):
                 chart_data  = {}
                 sitecode_chart = {}
                 # if no license in used 
-                if "TOTAL_LICENSES" in feature:
+                if "TOTAL_LICENSES" in feature and "USED_LICENSES" in feature:
                     lic_remain = int(feature["TOTAL_LICENSES"]) - int(feature["USED_LICENSES"])
                     
                     users_info = feature["users"]

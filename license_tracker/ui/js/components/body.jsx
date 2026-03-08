@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Button, Col, Row, Tabs, Layout, Menu, notification, Input, Select, Spin, Radio } from 'antd';
 import { Table, Anchor, Checkbox } from 'antd';
-import { UserOutlined, LogoutOutlined, LoginOutlined, SettingOutlined, UserAddOutlined, HomeOutlined, DashboardOutlined, BarChartOutlined, DollarOutlined, FileTextOutlined, ThunderboltOutlined, DeleteOutlined } from '@ant-design/icons';
+import { UserOutlined, LogoutOutlined, LoginOutlined, SettingOutlined, UserAddOutlined, HomeOutlined, DashboardOutlined, BarChartOutlined, DollarOutlined, FileTextOutlined, ThunderboltOutlined, DeleteOutlined, MessageOutlined, ProfileOutlined } from '@ant-design/icons';
 const { Header, Content, Sider } = Layout;
 const { TabPane } = Tabs;
 const { TextArea } = Input;
@@ -17,7 +17,12 @@ import License_Table from './license_table'
 import { LoginGraph } from './license_graph';
 import { HistoricalUsage } from './historical_usage';
 import { HistoricalUtilization } from './historical_utilization';
+import { ReportingPage } from './reporting';
 import { Dashboard } from './dashboard';
+import { HomePage } from './homepage';
+import { CostingPage } from './costing';
+import { ChatPage } from './chat';
+import { HomeChatPage } from './home_chat';
 
 const { Link } = Anchor;
 
@@ -64,6 +69,21 @@ export class Body extends React.Component {
 
     this.generateLiveData = this.generateLiveData.bind(this);
     this.clearLiveData = this.clearLiveData.bind(this);
+  }
+
+  componentDidMount() {
+    axiosInstance.get("/license/check_session")
+      .then(res => {
+        if (res.data.logged_in) {
+          this.setState({
+            isLoggedIn: true,
+            user: res.data.username,
+            isAdmin: res.data.is_admin || false,
+            currentPage: 'home',
+          });
+        }
+      })
+      .catch(err => {});
   }
 
   onCheckboxChange(e) {
@@ -158,12 +178,24 @@ export class Body extends React.Component {
           output_text_arr: response.data.output_text
         });
       }
-      ).catch(function (error) {
+      ).catch((error) => {
         console.log(error)
+        let description = `Unable to get the license data`
+        let duration = 20
+        
+        if (error.response && error.response.data) {
+          if (error.response.data.error === "RATE_LIMIT") {
+            description = error.response.data.output_text[0] || "License server rate limit exceeded. Please wait and try again."
+            duration = 10
+          } else if (error.response.data.error) {
+            description = error.response.data.error
+          }
+        }
+        
         notification["error"]({
           message: "Error!",
-          duration: 20,
-          description: `Unable to get the license data`
+          duration: duration,
+          description: description
         });
       }).finally(() => {
         this.setState({ loading: false })
@@ -288,7 +320,7 @@ export class Body extends React.Component {
           user: username,
           isLoggedIn: true,
           isAdmin: isAdmin,
-          currentPage: 'dashboard',
+          currentPage: 'home',
           loading: false
         })
         notification["success"]({
@@ -384,31 +416,17 @@ export class Body extends React.Component {
       </Menu.Item>
     )
 
-    const menuHistoricalUsage = (
+    const menuReporting = (
       <Menu.Item
         key='7'
-        id="historicalUsage"
+        id="reporting"
         style={{
           opacity: "1",
-          height: "100%",
-          order: "3",
-          position: "static"
+          height: " 100%",
+          float: "left !important",
+          color: "white"
         }}>
-        Historical Usage
-      </Menu.Item>
-    )
-
-    const menuHistoricalUtilization = (
-      <Menu.Item
-        key='8'
-        id="historicalUtilization"
-        style={{
-          opacity: "1",
-          height: "100%",
-          order: "4",
-          position: "static"
-        }}>
-        Utilization
+        Reporting
       </Menu.Item>
     )
 
@@ -441,11 +459,10 @@ export class Body extends React.Component {
         style={{ height: '100%', background: 'linear-gradient(90deg, #0d9488 0%, #0891b2 100%)' }}
         onSelect={(i) => this.onMenuSelect(i)}>
         <Menu.Item key='1' id="treeButton" style={{ fontSize: 20, float: "left", color: "white", fontWeight: "bold" }}>
-          {"License Tracker"}
+          {"Vizvalytics - license tracker"}
         </Menu.Item>
 
-        {menuHistoricalUsage}
-        {menuHistoricalUtilization}
+        {menuReporting}
         {this.state.isLoggedIn && this.state.isAdmin ? menuAdminPanel : null}
         {this.state.isLoggedIn ? menuUserName : null}
         {this.state.isLoggedIn ? menuLoggedIn : menuLoggedOut}
@@ -460,152 +477,66 @@ export class Body extends React.Component {
       </Header>
     )
 
-    const license_tracker_overview_page = (
-      <div style={formPageStyle}>
-        {message}
-        <br />
-        <br />
-        <Select
-          mode="multiple"
-          showSearch
-          allowClear
-          style={{
-            width: 300,
-          }}
-          placeholder="Select an Application"
-          onChange={this.select_app_region.bind(this)}
-        // options={options}
-        >
-          <Option value="altair eu" key="altair eu">Altair EU</Option>
-          <Option value="altair eu_unlimited" key="altair eu_unlimited">Altair EU Unlimited</Option>
-          <Option value="altair apac" key="altair apac">Altair APAC</Option>
-          <Option value="altair apac_unlimited" key="altair apac_unlimited">Altair APAC Unlimited</Option>
-          <Option value="altair ame" key="altair ame">Altair AME</Option>
-          <Option value="msc eu" key="msc eu">MSC EU</Option>
-          <Option value="msc apac" key="msc apac">MSC APAC</Option>
-          <Option value="msc ame" key="msc ame">MSC AME</Option>
-          <Option value="msc cluster" key="msc cluster">MSC Cluster</Option>
-          <Option value="pw" key="pw">Particleworks</Option>
-          <Option value="ricardo" key="ricardo">Ricardo</Option>
-          <Option value="masta" key="masta">Masta</Option>
-          <Option value="rlm" key="rlm">RLM</Option>
-        </Select>
-        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-        {/* <Select
-          mode="multiple"
-          showSearch
-          allowClear
-          style={{
-            width: 300,
-          }}
-          placeholder="Select an Feature"
-          onChange={this.select_feature.bind(this)}
-          options={this.state.fearture_list}
-        ></Select> */}
-        {/* &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; */}
-        <Checkbox defaultChecked={this.state.is_inuse} onChange={this.onCheckboxChange.bind(this)}>In Use</Checkbox>
-        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-        <Button
-          type="primary"
-          size="large"
-          loading={this.state.loading}
-          onClick={this.getlicensedata.bind(this)}>
-          <UserOutlined />
-          Submit
-        </Button>
-        &nbsp;&nbsp;&nbsp;&nbsp;
-        {this.state.isLoggedIn && (
-          <Button
-            type="default"
-            size="large"
-            loading={this.state.generatingLiveData}
-            onClick={this.generateLiveData}
-            style={{ backgroundColor: '#52c41a', borderColor: '#52c41a', color: 'white' }}>
-            <ThunderboltOutlined />
-            Generate Live Data
-          </Button>
-        )}
-        &nbsp;&nbsp;
-        {this.state.isLoggedIn && (
-          <Button
-            type="default"
-            size="large"
-            loading={this.state.generatingLiveData}
-            onClick={this.clearLiveData}
-            danger>
-            <DeleteOutlined />
-            Clear Live Data
-          </Button>
-        )}
-        <br />
-        <br />
-        <h1>License Info :</h1>
-        {this.state.loading ? <Spin tip="Loading..." style={{ position: "absolute", left: "0px", top: "45%", width: "100%", height: "100%", zIndex: "100" }} /> : null}
-        {this.state.output_text_arr.length > 0 ?
-          (
-            <div>
-              {this.state.output_text_arr.map((output_text, index) =>
-                <div>
-                  <h2>Host Name : {this.state.server_info_arr[index]["hostname"]}</h2>
-                  {this.state.fearture_list_arr[index].map(feat_item =>
-                    <div>
-                      <b> Software: {feat_item["NAME"]}</b>
-                      <p> Total license: <b>{feat_item["TOTAL_LICENSES"]}</b>,  Current licenses in use: <b>{feat_item["USED_LICENSES"]}</b> </p>
-                      <Row>
-                        <Col span={16}>
-                          <Tabs defaultActiveKey="1">
-                            <TabPane tab="Table" key="1">
-                              {/* {this.state.users = feat_item["users"]} */}
-                              <License_Table onClickKill={onClickKill} Username={this.state.user} DataSource={feat_item["users"]} Application={this.state.server_info_arr[index]["application"]} 
-                              region={this.state.server_info_arr[index]["region"]} hostname={this.state.server_info_arr[index]["hostname"]}  software={feat_item["NAME"]}></License_Table>
-                            </TabPane>
-                            <TabPane tab="Text" key="2" >
+    const pageHeaderStyle = {
+      padding: '16px 24px',
+      background: '#fff',
+      borderBottom: '1px solid #e5e7eb',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    };
+    const pageHeaderTitle = {
+      fontSize: '18px',
+      fontWeight: '600',
+      color: '#1e3a5f',
+    };
+    const pageHeaderUser = {
+      fontSize: '13px',
+      color: '#6b7280',
+    };
 
-                              <TextArea overflowY={scroll} style={{ height: "432px" }} rows={40} placeholder="License Info" value={output_text} />
-                            </TabPane>
-                          </Tabs>
-                        </Col>
-                        <Col span={8} >
-                          <Radio.Group name="radiogroup" onChange={onRadioChange} defaultValue={1}>
-                            <Radio value={1}>User</Radio>
-                            <Radio value={2}>Region</Radio>
-                          </Radio.Group>
-                          <div style={{ position: 'absolute', width: '100%', height: '100%', background: 'rgb(0 0 0 / 0%)' }} >
-                            <h3 style={{ position: "relative", textAlign: 'center', top: "2%" }}>Current License Usage {feat_item["NAME"]}</h3>
-                            {this.state.radio_val == 1 ?
-                              <ChartItem Labels={Object.keys(feat_item["CHART_DATA"]).map((key) => key)} Series={Object.values(feat_item["CHART_DATA"]).map((value) => value)}></ChartItem>
-                              :
-                              <ChartItem Labels={Object.keys(feat_item["SITE_CHART_DATA"]).map((key) => key)} Series={Object.values(feat_item["SITE_CHART_DATA"]).map((value) => value)}></ChartItem>
-                            }
-                          </div>
-                        </Col>
-                      </Row>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )
-          : null}
+    const pageNames = {
+      'home': 'Home',
+      'licenses': 'Licenses',
+      '1': 'Licenses',
+      'dashboard': 'Dashboard',
+      '': 'Dashboard',
+      'chat': 'Chat',
+      '7': 'Reporting',
+      '8': 'Documents & Costing',
+      'admin': 'Admin Panel',
+    };
+    const currentPageName = pageNames[this.state.currentPage] || 'Dashboard';
+
+    const pageHeader = (
+      <div style={pageHeaderStyle}>
+        <span style={pageHeaderTitle}>{currentPageName}</span>
+        <span style={pageHeaderUser}><UserOutlined style={{ marginRight: 6 }} />{this.state.user}</span>
       </div>
     );
 
+    const license_tracker_overview_page = (
+      <HomePage user={this.state.user} isLoggedIn={this.state.isLoggedIn} isAdmin={this.state.isAdmin} />
+    );
+
     let displayedPage = <div></div>;
-    if (this.state.currentPage === 'home' || this.state.currentPage === '1') {
+    if (this.state.currentPage === 'home') {
+      displayedPage = <HomeChatPage />;
+    }
+    else if (this.state.currentPage === 'licenses' || this.state.currentPage === '1') {
       displayedPage = license_tracker_overview_page;
     }
     else if (this.state.currentPage === 'dashboard' || this.state.currentPage === '') {
       displayedPage = <Dashboard />;
     }
+    else if (this.state.currentPage === 'chat') {
+      displayedPage = <ChatPage />;
+    }
     else if (this.state.currentPage === '7') {
-      displayedPage = <div> {this.state.loading ? <Spin tip="Loading..." style={{ position: "absolute", left: "0px", top: "45%", width: "100%", height: "100%", zIndex: "100" }} /> : null}
-        <HistoricalUsage />
-      </div>
+      displayedPage = <ReportingPage />;
     }
     else if (this.state.currentPage === '8') {
-      displayedPage = <div> {this.state.loading ? <Spin tip="Loading..." style={{ position: "absolute", left: "0px", top: "45%", width: "100%", height: "100%", zIndex: "100" }} /> : null}
-        <HistoricalUtilization />
-      </div>
+      displayedPage = <CostingPage />
     }
     else if (this.state.currentPage === 'admin' && this.state.isAdmin) {
       displayedPage = <AdminPanel />
@@ -663,14 +594,21 @@ export class Body extends React.Component {
     const sidebarMenu = (
       <div style={sidebarStyle}>
         <div style={{ padding: '16px 8px', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>
-          <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#1e3a5f', letterSpacing: '1px' }}>VIZVALYTICS</span>
+          <span style={{ fontSize: '9px', fontWeight: 'bold', color: '#1e3a5f', letterSpacing: '0.3px' }}>Vizvalytics<br/><span style={{ fontWeight: 400, fontSize: '8px' }}>license tracker</span></span>
         </div>
         <div 
-          style={this.state.currentPage === 'home' || this.state.currentPage === '1' ? menuItemActiveStyle : menuItemStyle}
+          style={this.state.currentPage === 'home' ? menuItemActiveStyle : menuItemStyle}
           onClick={() => this.setState({ currentPage: 'home' })}
         >
           <HomeOutlined style={menuIconStyle} />
           <span style={menuLabelStyle}>HOME</span>
+        </div>
+        <div 
+          style={this.state.currentPage === 'licenses' || this.state.currentPage === '1' ? menuItemActiveStyle : menuItemStyle}
+          onClick={() => this.setState({ currentPage: 'licenses' })}
+        >
+          <FileTextOutlined style={menuIconStyle} />
+          <span style={menuLabelStyle}>LICENSES</span>
         </div>
         <div 
           style={this.state.currentPage === 'dashboard' || this.state.currentPage === '' ? menuItemActiveStyle : menuItemStyle}
@@ -678,6 +616,13 @@ export class Body extends React.Component {
         >
           <DashboardOutlined style={menuIconStyle} />
           <span style={menuLabelStyle}>DASHBOARD</span>
+        </div>
+        <div 
+          style={this.state.currentPage === 'chat' ? menuItemActiveStyle : menuItemStyle}
+          onClick={() => this.setState({ currentPage: 'chat' })}
+        >
+          <MessageOutlined style={menuIconStyle} />
+          <span style={menuLabelStyle}>CHAT</span>
         </div>
         {this.state.isAdmin ? (
           <div 
@@ -727,15 +672,40 @@ export class Body extends React.Component {
 
     if (!this.state.isLoggedIn) {
       return (
-        <Layout className="layout" style={{ overflowY: "hidden", minHeight: '100vh', backgroundColor: '#e8ecf1' }}>
-          <Content style={{ backgroundColor: '#e8ecf1', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div style={{ width: '100%', maxWidth: 420, padding: '40px', backgroundColor: '#fff', borderRadius: '16px', boxShadow: '0 4px 24px rgba(0,0,0,0.10)' }}>
-              <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-                <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#1e3a5f', letterSpacing: '2px' }}>VIZVALYTICS</span>
-                <div style={{ fontSize: '13px', color: '#6b7280', marginTop: '4px' }}>License Tracker</div>
+        <Layout className="layout" style={{ overflowY: "hidden", minHeight: '100vh', background: 'linear-gradient(135deg, #0f2027 0%, #203a43 40%, #2c5364 100%)' }}>
+          <Content style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+            <div style={{
+              width: '100%',
+              maxWidth: 460,
+              padding: '48px 40px',
+              backgroundColor: 'rgba(255,255,255,0.97)',
+              borderRadius: '20px',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.1)',
+              backdropFilter: 'blur(10px)',
+            }}>
+              <div style={{ textAlign: 'center', marginBottom: '36px' }}>
+                <div style={{
+                  width: 56,
+                  height: 56,
+                  margin: '0 auto 16px',
+                  borderRadius: 14,
+                  background: 'linear-gradient(135deg, #1e3a5f 0%, #2d6cad 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 4px 14px rgba(30, 58, 95, 0.35)',
+                }}>
+                  <span style={{ fontSize: 24, fontWeight: 'bold', color: '#fff', letterSpacing: 1 }}>LT</span>
+                </div>
+                <div style={{ fontSize: '22px', fontWeight: '700', color: '#1e3a5f', letterSpacing: '2px' }}>Vizvalytics</div>
+                <div style={{ fontSize: '13px', fontWeight: '400', color: '#1e3a5f', letterSpacing: '1px', marginTop: '2px' }}>license tracker</div>
+                <div style={{ fontSize: '14px', color: '#8c95a6', marginTop: '6px', fontWeight: 400 }}>License Management Platform</div>
               </div>
-              {this.state.loading ? <Spin tip="Logging in..." style={{ display: 'block', margin: '20px auto' }} /> : null}
+              {this.state.loading ? <Spin tip="Signing in..." style={{ display: 'block', margin: '20px auto' }} /> : null}
               <LoginPage onLoginFinish={onLoginFinish} />
+              <div style={{ textAlign: 'center', marginTop: 24, fontSize: 12, color: '#b0b8c4' }}>
+                Secure access · Enterprise edition
+              </div>
             </div>
           </Content>
         </Layout>
@@ -746,6 +716,7 @@ export class Body extends React.Component {
       <Layout className="layout" style={{ overflowY: "hidden", minHeight: '100vh' }}>
         {sidebarMenu}
         <Layout style={{ marginLeft: 80, backgroundColor: '#e8ecf1' }}>
+          {pageHeader}
           <Content style={{ backgroundColor: '#e8ecf1', minHeight: '100vh' }}>
             {displayedPage}
           </Content>

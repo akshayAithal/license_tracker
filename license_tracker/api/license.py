@@ -86,6 +86,19 @@ def get_feature():
     return jsonify({"features": features})
 
 
+@license_blueprint.route("/check_session", methods=["GET"])
+def check_session():
+    """Check if user has an active session (for page refresh persistence)."""
+    if current_user.is_authenticated:
+        return jsonify({
+            "success": True,
+            "logged_in": True,
+            "username": current_user.login,
+            "is_admin": current_user.is_admin()
+        })
+    return jsonify({"success": True, "logged_in": False})
+
+
 @license_blueprint.route("/logout",methods=["GET","POST"])
 @login_required
 def logout():
@@ -198,6 +211,13 @@ def login():
         
         login_user(user, remember=remember_me)
         
+        # Create user file folder if it doesn't exist
+        try:
+            from license_tracker.api.costing import ensure_user_folder
+            ensure_user_folder(login_name)
+        except Exception as folder_err:
+            logger.warning(f"Could not create user folder for {login_name}: {folder_err}")
+        
         return jsonify({
             "success": True,
             "username": login_name,
@@ -303,7 +323,21 @@ def get_data():
         output_tbl_arr, server_info_arr, output_text_arr = get_license_data(region_arr, app_arr, is_inuse)
         return jsonify({"feature_list":output_tbl_arr, "server_info": server_info_arr, "output_text": output_text_arr})
     except Exception as err:
-        return abort(err)
+        logger.error(f"Error in get_data: {str(err)}")
+        # Check if it's a "Too many requests" error
+        if "too many requests" in str(err).lower() or "rate limit" in str(err).lower():
+            return jsonify({
+                "feature_list": [],
+                "server_info": [],
+                "output_text": ["License server is reporting too many requests. Please wait a moment and try again."],
+                "error": "RATE_LIMIT"
+            }), 429
+        return jsonify({
+            "feature_list": [],
+            "server_info": [],
+            "output_text": [],
+            "error": str(err)
+        }), 500
 
 def get_license_data(region_arr, app_arr, is_inuse):
     from license_tracker.utils.license_utils import check_altair_lic_status,check_msc_lic_status,check_particleworks_output, check_ricardo_output, check_masta_output, check_rlm_output
@@ -439,20 +473,25 @@ def get_license_data(region_arr, app_arr, is_inuse):
             for idx in range(len(unique_app)):
                 if unique_app[idx] == app:
                     op  =  output_tbl_arr[idx][0]
-                    op["TOTAL_LICENSES"] = int(op["TOTAL_LICENSES"]) + int(output_tbl[0]["TOTAL_LICENSES"])
-                    op["USED_LICENSES"] = int(op["USED_LICENSES"]) + int(output_tbl[0]["USED_LICENSES"])
-                    op["users"].extend(output_tbl[0]["users"])
-                    for key, value in output_tbl[0]["CHART_DATA"].items():
-                        if key not in op["CHART_DATA"]:
-                            op["CHART_DATA"][key]=value
-                        else:
-                             op["CHART_DATA"][key] += value
+                    if "TOTAL_LICENSES" in op and len(output_tbl) > 0 and "TOTAL_LICENSES" in output_tbl[0]:
+                        op["TOTAL_LICENSES"] = int(op["TOTAL_LICENSES"]) + int(output_tbl[0]["TOTAL_LICENSES"])
+                    if "USED_LICENSES" in op and len(output_tbl) > 0 and "USED_LICENSES" in output_tbl[0]:
+                        op["USED_LICENSES"] = int(op["USED_LICENSES"]) + int(output_tbl[0]["USED_LICENSES"])
+                    if len(output_tbl) > 0 and "users" in op and "users" in output_tbl[0]:
+                        op["users"].extend(output_tbl[0]["users"])
+                    if len(output_tbl) > 0 and "CHART_DATA" in op and "CHART_DATA" in output_tbl[0]:
+                        for key, value in output_tbl[0]["CHART_DATA"].items():
+                            if key not in op["CHART_DATA"]:
+                                op["CHART_DATA"][key]=value
+                            else:
+                                 op["CHART_DATA"][key] += value
 
-                    for key, value in output_tbl[0]["SITE_CHART_DATA"].items():
-                        if key not in op["SITE_CHART_DATA"]:
-                            op["SITE_CHART_DATA"][key]=value
-                        else:
-                             op["SITE_CHART_DATA"][key] += value
+                    if len(output_tbl) > 0 and "SITE_CHART_DATA" in op and "SITE_CHART_DATA" in output_tbl[0]:
+                        for key, value in output_tbl[0]["SITE_CHART_DATA"].items():
+                            if key not in op["SITE_CHART_DATA"]:
+                                op["SITE_CHART_DATA"][key]=value
+                            else:
+                                 op["SITE_CHART_DATA"][key] += value
                 
                     
                     output_text_arr[idx] = str(output_text_arr[idx]) + "\r\n"+ str(output_text)
@@ -462,7 +501,153 @@ def get_license_data(region_arr, app_arr, is_inuse):
         
     logger.info("End get_license_data(region_arr, app_arr, is_inuse) method")
         #logger.info(output)
+    
+    # Supplement with DB-backed live data from license_details
+    try:
+        db_features, db_servers, db_texts = get_db_license_data()
+        if db_features:
+            output_tbl_arr.extend(db_features)
+            server_info_arr.extend(db_servers)
+            output_text_arr.extend(db_texts)
+    except Exception as db_err:
+        logger.error("Error fetching DB license data: %s" % db_err)
+    
     return output_tbl_arr, server_info_arr, output_text_arr
+
+
+def get_db_license_data():
+    """Read active license checkouts from the database (license_details table)
+    and return them in the same format the frontend expects from external tools."""
+    from license_tracker.models.license_details import LicenseDetail
+    from sqlalchemy import func
+    
+    # Get active checkouts grouped by application
+    active = LicenseDetail.query.filter(
+        LicenseDetail.check_in.is_(None)
+    ).all()
+    
+    if not active:
+        return [], [], []
+    
+    # Group by application
+    app_data = {}
+    for record in active:
+        app = record.application or 'Unknown'
+        if app not in app_data:
+            app_data[app] = {}
+        feature = record.feature or 'Unknown'
+        if feature not in app_data[app]:
+            app_data[app][feature] = {
+                'total': record.total_license or 0,
+                'used': 0,
+                'users': []
+            }
+        app_data[app][feature]['used'] += record.license_used or 1
+        app_data[app][feature]['users'].append(record)
+    
+    output_tbl_arr = []
+    server_info_arr = []
+    output_text_arr = []
+    
+    for app_name, features in app_data.items():
+        feature_list = []
+        for feat_name, feat_data in features.items():
+            chart_data = {}
+            site_chart = {}
+            users_list = []
+            
+            for r in feat_data['users']:
+                user_entry = {
+                    'NAME': r.user or '',
+                    'HOST': r.host or '',
+                    'SITE': r.site_code or 'N/A',
+                    'FEATURE': r.feature or '',
+                    'VERSION': '',
+                    'SERVER': 'database',
+                    'KEY': str(r.id_) if r.id_ else '',
+                    'DATE': r.check_out.strftime('%Y-%m-%d') if r.check_out else '',
+                    'TIME': r.check_out.strftime('%H:%M') if r.check_out else '',
+                    'USED': str(r.license_used or 1),
+                    'USER_KEY': r.user_key or r.user or '',
+                    'SERVER_HOST': 'database',
+                }
+                users_list.append(user_entry)
+                
+                ukey = r.user or 'unknown'
+                used_val = r.license_used or 1
+                if ukey in chart_data:
+                    chart_data[ukey] += used_val
+                else:
+                    chart_data[ukey] = used_val
+                
+                site = r.site_code or 'N/A'
+                if site in site_chart:
+                    site_chart[site] += used_val
+                else:
+                    site_chart[site] = used_val
+            
+            total = feat_data['total']
+            used = feat_data['used']
+            free = max(0, total - used)
+            chart_data['Free'] = free
+            site_chart['Free'] = free
+            
+            feature_list.append({
+                'NAME': feat_name,
+                'TOTAL_LICENSES': str(total),
+                'USED_LICENSES': str(used),
+                'users': users_list,
+                'CHART_DATA': chart_data,
+                'SITE_CHART_DATA': site_chart,
+            })
+        
+        regions = list(set(r.region for r in active if r.application == app_name and r.region))
+        server_info = {
+            'hostname': 'Database (Generated Live Data)',
+            'application': app_name,
+            'region': ', '.join(regions) if regions else 'ALL',
+        }
+        output_text = 'Live data from database for %s (%d active checkouts)' % (
+            app_name, sum(len(f['users']) for f in feature_list))
+        
+        output_tbl_arr.append(feature_list)
+        server_info_arr.append(server_info)
+        output_text_arr.append(output_text)
+    
+    return output_tbl_arr, server_info_arr, output_text_arr
+
+
+@license_blueprint.route("/get_active_checkouts", methods=["GET"])
+@login_required
+def get_active_checkouts():
+    """Return all active license checkouts from the DB as a flat list."""
+    from license_tracker.models.license_details import LicenseDetail
+    try:
+        records = LicenseDetail.query.filter(
+            LicenseDetail.check_in.is_(None)
+        ).order_by(LicenseDetail.check_out.desc()).all()
+
+        data = []
+        for r in records:
+            data.append({
+                'id': r.id_,
+                'application': r.application or '',
+                'region': r.region or '',
+                'user': r.user or '',
+                'host': r.host or '',
+                'feature': r.feature or '',
+                'license_used': r.license_used or 0,
+                'total_license': r.total_license or 0,
+                'site_code': r.site_code or '',
+                'check_out': r.check_out.strftime('%Y-%m-%d %H:%M') if r.check_out else '',
+                'user_key': r.user_key or '',
+            })
+
+        return jsonify({"success": True, "data": data, "count": len(data)})
+    except Exception as err:
+        logger.error("Error getting active checkouts: %s" % err)
+        return jsonify({"success": False, "data": [], "error": str(err)}), 500
+
     
 @license_blueprint.route("/get_license_by_date", methods=["POST"])
 def get_license_by_date():
@@ -789,6 +974,8 @@ def generate_live_data():
     from datetime import datetime, timedelta
     from license_tracker.models.license_details import LicenseDetail
     from license_tracker.models.license_history_logs import LicenseHistoryLog
+    from license_tracker.models.license_denial import LicenseDenial
+    from license_tracker.models.realtime_usage_snapshot import RealtimeUsageSnapshot
     
     try:
         # Get duration from request (default 60 minutes)
@@ -843,14 +1030,21 @@ def generate_live_data():
             ('emma.white', 'workstation-13', 'US-NYC'),
             ('chris.brown', 'workstation-14', 'EU-BER'),
         ]
+
+        DENIAL_REASONS = [
+            'All licenses in use',
+            'License limit exceeded',
+            'No available licenses for this feature',
+            'Maximum concurrent users reached',
+        ]
         
         now = datetime.now()
-        generated_details = 0
-        generated_history = 0
+        generated_checkouts = 0
+        generated_checkins = 0
+        generated_denials = 0
         
-        # Generate events spread over the duration
         for i in range(num_events):
-            # Random time offset within the duration (past and future)
+            # Random time offset within the duration
             minutes_offset = random.randint(-5, duration_minutes)
             event_time = now + timedelta(minutes=minutes_offset)
             
@@ -863,17 +1057,17 @@ def generate_live_data():
             region = random.choice(REGIONS)
             server = app_config['server'].format(region=REGION_SERVERS[region])
             username, host, site_code = random.choice(USERS)
-            user_key = f"{username}@{host}"
+            user_key = "%s@%s" % (username, host)
             
             # Random license usage
             lic_used = random.randint(1, 5)
             total_used = random.randint(int(total_lic * 0.2), int(total_lic * 0.8))
             
-            # Decide if this is a check-in or check-out (70% check-out, 30% check-in)
-            is_checkout = random.random() > 0.3
+            # Decide event type: 60% checkout, 30% checkin, 10% denial
+            roll = random.random()
             
-            if is_checkout:
-                # Create a license_details entry (active check-out)
+            if roll < 0.6:
+                # CHECK-OUT: create active license in license_details
                 detail = LicenseDetail(
                     application=app_name,
                     region=region,
@@ -890,43 +1084,129 @@ def generate_live_data():
                     total_license_used=total_used
                 )
                 db.session.add(detail)
-                generated_details += 1
-            
-            # Always create a history log entry
-            history = LicenseHistoryLog(
-                application=app_name,
-                region=region,
-                user=username,
-                server=server,
-                host=host,
-                software=software,
-                feature=feature,
-                version=version,
-                user_key=user_key,
-                date_time=event_time,
-                license_used=lic_used,
-                site_code=site_code,
-                total_license=total_lic,
-                total_license_used=total_used
-            )
-            db.session.add(history)
-            generated_history += 1
+                generated_checkouts += 1
+                
+            elif roll < 0.9:
+                # CHECK-IN: find an active checkout and move it to history
+                active = LicenseDetail.query.filter(
+                    LicenseDetail.check_in.is_(None),
+                    LicenseDetail.application == app_name,
+                    LicenseDetail.feature == feature,
+                ).first()
+                
+                if active:
+                    # Calculate spent hours
+                    checkout_time = active.check_out or event_time
+                    spent = (event_time - checkout_time).total_seconds() / 3600.0
+                    
+                    # Move to history logs with full lifecycle data
+                    history = LicenseHistoryLog(
+                        application=active.application,
+                        region=active.region,
+                        user=active.user,
+                        server=server,
+                        host=active.host,
+                        software=software,
+                        feature=active.feature,
+                        version=version,
+                        user_key=active.user_key,
+                        date_time=event_time,
+                        license_used=active.license_used,
+                        site_code=active.site_code,
+                        total_license=active.total_license,
+                        total_license_used=active.total_license_used,
+                        user_id=active.user_id,
+                        check_out=active.check_out,
+                        check_in=event_time,
+                        spent_hours="%.2f" % spent
+                    )
+                    db.session.add(history)
+                    
+                    # Remove from active details
+                    db.session.delete(active)
+                    generated_checkins += 1
+                else:
+                    # No active license to check in, create a checkout instead
+                    detail = LicenseDetail(
+                        application=app_name,
+                        region=region,
+                        user=username,
+                        host=host,
+                        feature=feature,
+                        user_key=user_key,
+                        license_used=lic_used,
+                        site_code=site_code,
+                        check_out=event_time,
+                        check_in=None,
+                        spent_hours=None,
+                        total_license=total_lic,
+                        total_license_used=total_used
+                    )
+                    db.session.add(detail)
+                    generated_checkouts += 1
+            else:
+                # DENIAL: user tried to check out but was denied
+                denial = LicenseDenial(
+                    application=app_name,
+                    region=region,
+                    user=username,
+                    host=host,
+                    feature=feature,
+                    reason=random.choice(DENIAL_REASONS),
+                    denied_at=event_time,
+                    total_license=total_lic,
+                    total_license_used=total_used
+                )
+                db.session.add(denial)
+                generated_denials += 1
         
         db.session.commit()
         
-        logger.info(f"Generated live data: {generated_details} active licenses, {generated_history} history records")
+        # Generate realtime usage snapshots so Dashboard widgets can see the data
+        snapshot_time = now
+        generated_snapshots = 0
+        for app_name, app_config in APPS_CONFIG.items():
+            for software, feature, version, total_lic in app_config['features']:
+                for region in REGIONS:
+                    # Count active checkouts for this app/feature/region
+                    used = db.session.query(
+                        db.func.coalesce(db.func.sum(LicenseDetail.license_used), 0)
+                    ).filter(
+                        LicenseDetail.application == app_name,
+                        LicenseDetail.feature == feature,
+                        LicenseDetail.region == region,
+                        LicenseDetail.check_in.is_(None)
+                    ).scalar() or 0
+                    
+                    snapshot = RealtimeUsageSnapshot(
+                        application=app_name,
+                        region=region,
+                        feature=feature,
+                        total_license=total_lic,
+                        used_license=int(used),
+                        snapshot_time=snapshot_time
+                    )
+                    db.session.add(snapshot)
+                    generated_snapshots += 1
+        
+        db.session.commit()
+        
+        msg = "Generated %d checkouts, %d check-ins, %d denials, %d snapshots" % (
+            generated_checkouts, generated_checkins, generated_denials, generated_snapshots)
+        logger.info("Generated live data: %s" % msg)
         
         return jsonify({
             "success": True,
-            "message": f"Generated {generated_details} active licenses and {generated_history} history records",
-            "details_count": generated_details,
-            "history_count": generated_history,
+            "message": msg,
+            "checkouts": generated_checkouts,
+            "checkins": generated_checkins,
+            "denials": generated_denials,
             "duration_minutes": duration_minutes
         })
         
     except Exception as err:
         db.session.rollback()
-        logger.error(f"Error generating live data: {err}")
+        logger.error("Error generating live data: %s" % err)
         return jsonify({"success": False, "error": str(err)}), 500
 
 
@@ -963,5 +1243,5 @@ def clear_live_data():
         
     except Exception as err:
         db.session.rollback()
-        logger.error(f"Error clearing live data: {err}")
+        logger.error("Error clearing live data: %s" % err)
         return jsonify({"success": False, "error": str(err)}), 500

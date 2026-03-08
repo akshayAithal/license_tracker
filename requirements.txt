@@ -65,6 +65,7 @@ Pygments
 PyJWT
 pylint
 PyMySQL
+PyPDF2
 pyparsing
 pyreadline
 python-redmine

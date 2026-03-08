@@ -6,7 +6,7 @@ import {
 import { 
     UserOutlined, SettingOutlined, SafetyOutlined, PlusOutlined, 
     EditOutlined, DeleteOutlined, ReloadOutlined, CheckCircleOutlined,
-    CloseCircleOutlined, LockOutlined, MailOutlined
+    CloseCircleOutlined, LockOutlined, MailOutlined, RobotOutlined
 } from '@ant-design/icons';
 import axios from 'axios';
 
@@ -27,12 +27,15 @@ export const AdminPanel = (props) => {
     const [editingUser, setEditingUser] = useState(null);
     const [userForm] = Form.useForm();
     const [ldapForm] = Form.useForm();
+    const [aiSettings, setAiSettings] = useState({});
+    const [aiForm] = Form.useForm();
 
     useEffect(() => {
         fetchUsers();
         fetchSettings();
         fetchLdapSettings();
         fetchAuthSettings();
+        fetchAiSettings();
     }, []);
 
     const fetchUsers = async () => {
@@ -170,6 +173,53 @@ export const AdminPanel = (props) => {
         } catch (error) {
             notification.error({
                 message: 'LDAP Test Failed',
+                description: (error.response && error.response.data && error.response.data.error) || 'Connection failed'
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchAiSettings = async () => {
+        try {
+            var res = await axiosInstance.get('/api/admin/ai/settings');
+            setAiSettings(res.data.ai_settings || {});
+            aiForm.setFieldsValue(res.data.ai_settings || {});
+        } catch (error) {
+            console.error('Failed to fetch AI settings', error);
+        }
+    };
+
+    const handleAiSubmit = async (values) => {
+        setLoading(true);
+        try {
+            await axiosInstance.put('/api/admin/ai/settings', values);
+            notification.success({
+                message: 'Success',
+                description: 'AI settings updated successfully'
+            });
+            fetchAiSettings();
+        } catch (error) {
+            notification.error({
+                message: 'Error',
+                description: 'Failed to update AI settings'
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleTestAi = async () => {
+        setLoading(true);
+        try {
+            var res = await axiosInstance.post('/api/admin/ai/test');
+            notification.success({
+                message: 'Success',
+                description: res.data.message || 'AI connection successful'
+            });
+        } catch (error) {
+            notification.error({
+                message: 'AI Test Failed',
                 description: (error.response && error.response.data && error.response.data.error) || 'Connection failed'
             });
         } finally {
@@ -469,6 +519,76 @@ export const AdminPanel = (props) => {
                     key="3"
                 >
                     {ldapSettingsTab}
+                </TabPane>
+                <TabPane
+                    tab={<span><RobotOutlined /> AI / Models</span>}
+                    key="4"
+                >
+                    <Card title="AI / Model Configuration" style={{ marginBottom: 16 }}>
+                        <Form
+                            form={aiForm}
+                            layout="vertical"
+                            onFinish={handleAiSubmit}
+                            initialValues={aiSettings}
+                        >
+                            <Row gutter={16}>
+                                <Col span={8}>
+                                    <Form.Item name="ai_provider" label="AI Provider">
+                                        <Select placeholder="Select provider">
+                                            <Option value="openai">OpenAI</Option>
+                                            <Option value="local">Local Model</Option>
+                                        </Select>
+                                    </Form.Item>
+                                </Col>
+                            </Row>
+                            <Divider>OpenAI Settings</Divider>
+                            <Row gutter={16}>
+                                <Col span={12}>
+                                    <Form.Item name="openai_api_key" label="OpenAI API Key">
+                                        <Input.Password placeholder="sk-..." />
+                                    </Form.Item>
+                                </Col>
+                                <Col span={12}>
+                                    <Form.Item name="openai_model" label="OpenAI Model">
+                                        <Select placeholder="Select model">
+                                            <Option value="gpt-4o-mini">GPT-4o Mini</Option>
+                                            <Option value="gpt-4o">GPT-4o</Option>
+                                            <Option value="gpt-4-turbo">GPT-4 Turbo</Option>
+                                            <Option value="gpt-3.5-turbo">GPT-3.5 Turbo</Option>
+                                        </Select>
+                                    </Form.Item>
+                                </Col>
+                            </Row>
+                            <Divider>Local Model Settings</Divider>
+                            <Row gutter={16}>
+                                <Col span={12}>
+                                    <Form.Item name="local_model_url" label="Local Model URL">
+                                        <Input placeholder="http://localhost:11434" />
+                                    </Form.Item>
+                                </Col>
+                                <Col span={6}>
+                                    <Form.Item name="local_model_name" label="Model Name">
+                                        <Input placeholder="llama3" />
+                                    </Form.Item>
+                                </Col>
+                                <Col span={6}>
+                                    <Form.Item name="local_model_api_key" label="API Key (optional)">
+                                        <Input.Password placeholder="Token" />
+                                    </Form.Item>
+                                </Col>
+                            </Row>
+                            <Form.Item>
+                                <Space>
+                                    <Button type="primary" htmlType="submit" loading={loading}>
+                                        Save AI Settings
+                                    </Button>
+                                    <Button onClick={handleTestAi} loading={loading}>
+                                        Test Connection
+                                    </Button>
+                                </Space>
+                            </Form.Item>
+                        </Form>
+                    </Card>
                 </TabPane>
             </Tabs>
 
